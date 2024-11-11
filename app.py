@@ -16,28 +16,29 @@ st.title("Sistema de Gestión Académica")
 menu = ["Dashboard", "Calificaciones", "Horarios", "Asistencias", "Profesores", "Estudiantes", "Rendimiento", "Eventos", "Secciones"]
 opcion = st.sidebar.selectbox("Selecciona el módulo", menu)
 
-# Dashboard general (en blanco)
-if opcion == "Dashboard":
-    st.header("Dashboard General")
-    st.write("Este es el dashboard en blanco. Puedes navegar a otros módulos usando el menú.")
+# Espacio reservado para el contenido dinámico del módulo
+contenido = st.empty()
 
-# Navegar entre módulos
-elif opcion == "Calificaciones":
-    calificaciones.mostrar()
+# Mostrar contenido según el módulo seleccionado
+with contenido:
+    if opcion == "Dashboard":
+        st.header("Dashboard General")
+        st.write("Este es el dashboard en blanco. Puedes navegar a otros módulos usando el menú.")
 
-elif opcion == "Asistencias":
-    asistencias.mostrar()
+    elif opcion == "Calificaciones":
+        calificaciones.mostrar()
 
-elif opcion == "Profesores":
-    profesores.mostrar()
+    elif opcion == "Asistencias":
+        asistencias.mostrar()
 
-elif opcion == "Estudiantes":
-    estudiantes.mostrar()
+    elif opcion == "Profesores":
+        profesores.mostrar()
 
-elif opcion == "Rendimiento":
-    rendimiento.mostrar()
+    elif opcion == "Estudiantes":
+        estudiantes.mostrar()
 
-elif opcion == "Secciones":
-    secciones.mostrar()
+    elif opcion == "Rendimiento":
+        rendimiento.mostrar()
 
-
+    elif opcion == "Secciones":
+        secciones.mostrar()
