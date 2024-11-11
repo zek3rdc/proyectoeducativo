@@ -50,21 +50,21 @@ def obtener_estudiantes_1():
             cursor = connection.cursor(dictionary=True)
             cursor.execute("""
 SELECT 
-    e.id_estudiante,
-    e.nombre AS nombre_estudiante,
-    e.apellido AS apellido_estudiante,
-    e.matricula,
-    e.cedula AS cedula_estudiante,
-    e.estado,
-    e.descripcion AS razon,
-    e.genero,                -- Agregar el género del estudiante
-    p.id_padres AS id_padre,
-    p.nombre AS nombre_padre,
-    p.apellido AS apellido_padre,
-    p.cedula AS cedula_padre
+    e.ID_ESTUDIANTE,
+    e.NOMBRE_EST,
+    e.APELLIDO_EST,
+    e.CI_EST,
+    e.CEDULA_EST,
+    e.ESTADO,
+    e.DESCRIPCION,
+    e.GENERO,                
+    p.ID_REPRESENTANTES,
+    p.NOMBRE_REPRE,
+    p.APELLIDO_REPRE,
+    p.CEDULA_REPRE
 FROM estudiantes e
-JOIN padres_estudiantes pe ON e.id_estudiante = pe.id_estudiante
-JOIN padres p ON p.id_padres = pe.id_padres
+JOIN padres_estudiantes pe ON e.ID_ESTUDIANTE = pe.ID_ESTUDIANTES
+JOIN padres p ON p.ID_REPRESENTANTES = pe.ID_REPRESENTANTES;
             """)
             estudiantes = cursor.fetchall()
             return estudiantes
@@ -113,7 +113,7 @@ def obtener_ultimo_id_estudiante():
     if connection:
         try:
             cursor = connection.cursor(dictionary=True)
-            cursor.execute("SELECT MAX(id_estudiante) AS ultimo_id FROM estudiantes")
+            cursor.execute("SELECT MAX(ID_ESTUDIANTE) AS ultimo_id FROM estudiantes")
             resultado = cursor.fetchone()  # Obtener el resultado de la consulta
             return resultado['ultimo_id'] if resultado['ultimo_id'] is not None else None
         except Error as e:
@@ -121,12 +121,12 @@ def obtener_ultimo_id_estudiante():
             return None
         finally:
             cerrar_conexion(connection)  # Cierra la conexión
-def matricula_existe(matricula):
+def matricula_existe(matricula_EST):
     connection = conectar()
     if connection:
         try:
             cursor = connection.cursor(dictionary=True)
-            cursor.execute("SELECT COUNT(*) as total FROM estudiantes WHERE matricula = %s", (matricula,))
+            cursor.execute("SELECT COUNT(*) as total FROM estudiantes WHERE CI_EST = %s", (matricula_EST,))
             result = cursor.fetchone()
             return result['total'] > 0  # Devuelve True si la matrícula existe, False si no
         except Error as e:
@@ -134,12 +134,12 @@ def matricula_existe(matricula):
             return False  # En caso de error, asumimos que no existe
         finally:
             cerrar_conexion(connection)
-def cedula_existe(cedula):
+def cedula_existe(cedula_EST):
     connection = conectar()
     if connection:
         try:
             cursor = connection.cursor(dictionary=True)
-            cursor.execute("SELECT COUNT(*) as total FROM estudiantes WHERE Cedula = %s", (cedula,))
+            cursor.execute("SELECT COUNT(*) as total FROM estudiantes WHERE CI_EST = %s", (cedula_EST,))
             result = cursor.fetchone()
             return result['total'] > 0  # Devuelve True si la matrícula existe, False si no
         except Error as e:
@@ -147,6 +147,8 @@ def cedula_existe(cedula):
             return False  # En caso de error, asumimos que no existe
         finally:
             cerrar_conexion(connection)
+
+
 def cambiar_estado_estudiante(id_estudiante, nuevo_estado, descripcion):
     try:
         connection = conectar()
@@ -155,8 +157,8 @@ def cambiar_estado_estudiante(id_estudiante, nuevo_estado, descripcion):
         # Actualizar el estado y la descripción del estudiante
         query = """
         UPDATE estudiantes 
-        SET estado = %s, descripcion = %s 
-        WHERE id_estudiante = %s
+        SET ESTADO = %s, DESCRIPCION = %s 
+        WHERE ID_ESTUDIANTE = %s
         """
         cursor.execute(query, (nuevo_estado, descripcion, id_estudiante))
         connection.commit()

@@ -1,0 +1,27 @@
+# Ignorar __pycache__ y archivos de caché de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignorar archivos de configuración de entorno
+
+
+# Ignorar archivos de configuración de IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Ignorar archivos de log
+*.log
+
+# Ignorar archivos de compilación
+*.egg-info/
+build/
+dist/
+Database/
+Database/*
+chat_icons/
+
+
