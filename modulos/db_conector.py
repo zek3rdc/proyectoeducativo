@@ -52,6 +52,7 @@ def ejecutar_modificacion(query, parametros=None):
         return 0
 
 # Consultar ESTUDIANTES
+# Consultar ESTUDIANTES
 def obtener_ESTUDIANTES_1():
     connection = conectar()  # Conectar a la base de datos
     if connection:
@@ -61,30 +62,37 @@ def obtener_ESTUDIANTES_1():
             
             cursor.execute("""
             SELECT 
-                e.ID_EST,
-                e.NOMBRE_EST,
-                e.APELLIDO_EST,
-                e.CI_EST,
-                e.CEDULA_EST,
-                e.ESTADO,
-                e.DESCRIPCION,
-                e.GENERO,                
-                p.ID_REP,
-                p.NOMBRE_REPRE,
-                p.APELLIDO_REPRE,
-                p.CEDULA_REPRE
-            FROM ESTUDIANTES e
-            JOIN REPRE_EST pe ON e.ID_EST = pe.ID_EST
-            JOIN REPRESENTANTES p ON p.ID_REP = pe.ID_R                                            EP;
+                e."ID_EST",
+                e."NOMBRE_EST",
+                e."APELLIDO_EST",
+                e."CEDULA" AS "CI_EST", -- Columna corregida según la definición de la base de datos
+                e."CEDULA_EST",
+                e."ESTADO",
+                e."DESCRIPCION_ESTADO" AS "DESCRIPCION", -- Usar la columna correcta
+                e."GENERO",
+                e."CONDICION",
+                p."ID_REP",
+                p."NOMBRE_REP" AS "NOMBRE_REPRE",
+                p."APELLIDO_REP" AS "APELLIDO_REPRE",
+                p."CEDULA_REP",
+                e."FECHA_REG"
+            FROM "ESTUDIANTES" e
+            JOIN "REPRE_EST" pe ON e."ID_EST" = pe."ID_EST"
+            JOIN "REPRESENTANTES" p ON p."ID_REP" = pe."ID_REPRE";
             """)
             
-            ESTUDIANTES = cursor.fetchall()  # Obtener todos los resultados de la consulta
-            return ESTUDIANTES  # Devuelve la lista de diccionarios
+            # Obtener todos los resultados de la consulta
+            estudiantes = cursor.fetchall()
+            return estudiantes  # Devuelve la lista de diccionarios
         except psycopg2.OperationalError as e:  # Manejo de errores específico para psycopg2
             print(f"OperationalError al consultar ESTUDIANTES: {e}")
             return None
+        except psycopg2.Error as e:  # Manejo de otros errores de psycopg2
+            print(f"Error al consultar ESTUDIANTES: {e}")
+            return None
         finally:
             cerrar_conexion(connection)  # Asegúrate de cerrar la conexión
+
 
 
 
@@ -111,7 +119,7 @@ def obtener_padres():
     if connection:
         try:
             cursor = connection.cursor(cursor_factory=RealDictCursor)
-            cursor.execute("SELECT * FROM REPRESENTANTES")
+            cursor.execute("""SELECT * FROM public."REPRESENTANTES" ORDER BY "ID_REP" ASC """)
             ESTUDIANTES = cursor.fetchall()
             return ESTUDIANTES
         except OperationalError as e:
@@ -121,44 +129,58 @@ def obtener_padres():
             cerrar_conexion(connection)
 
 def obtener_ultimo_ID_EST():
-    connection = conectar()  # Asegúrate de que esta función esté definida
+    connection = conectar()  # Asegúrate de que esta función esté definida para conectar a la base de datos
     if connection:
         try:
             cursor = connection.cursor(cursor_factory=RealDictCursor)
-            cursor.execute("SELECT MAX(ID_EST) AS ULTIMO_ID FROM ESTUDIANTES")
+            # Ejecutar la consulta para obtener el último ID de estudiante
+            cursor.execute("""SELECT MAX("ID_EST") AS ULTIMO_ID FROM "ESTUDIANTES";""")
             resultado = cursor.fetchone()  # Obtener el resultado de la consulta
+            
+            # Devolver el último ID, o None si no existe
             return resultado['ULTIMO_ID'] if resultado['ULTIMO_ID'] is not None else None
         except OperationalError as e:
             print(f"OperationalError al obtener el último ID de estudiante: {e}")
             return None
+        except Exception as e:
+            # Captura de otros errores para proporcionar más detalles
+            print(f"Error inesperado: {e}")
+            return None
         finally:
-            cerrar_conexion(connection)  # Cierra la conexión
-def matricula_existe(matricula_EST):
+            cerrar_conexion(connection)  # Cierra la conexión al final
+
+def registro_existe(tabla, campo, valor):
+    """
+    Verifica si un registro existe en una tabla específica.
+    """
     connection = conectar()
     if connection:
         try:
             cursor = connection.cursor(cursor_factory=RealDictCursor)
-            cursor.execute("SELECT COUNT(*) as total FROM ESTUDIANTES WHERE CEDULA_EST = %s", (matricula_EST,))
+            query = f"""SELECT COUNT(*) as total FROM "{tabla}" WHERE "{campo}" = %s"""
+            cursor.execute(query, (valor,))
             result = cursor.fetchone()
-            return result['total'] > 0  # Devuelve True si la matrícula existe, False si no
-        except OperationalError as e:
-            print(f"OperationalError al consultar matrícula: {e}")
-            return False  # En caso de OperationalError, asumimos que no existe
+            return result['total'] > 0
+        except Exception as e:
+            print(f"Error al consultar registro en {tabla}.{campo}={valor}: {e}")
+            return False
         finally:
             cerrar_conexion(connection)
-def cedula_existe(cedula_EST):
-    connection = conectar()
-    if connection:
-        try:
-            cursor = connection.cursor(cursor_factory=RealDictCursor)
-            cursor.execute("SELECT COUNT(*) as total FROM ESTUDIANTES WHERE CEDULA_EST = %s", (cedula_EST,))
-            result = cursor.fetchone()
-            return result['total'] > 0  # Devuelve True si la matrícula existe, False si no
-        except OperationalError as e:
-            print(f"OperationalError al consultar matrícula: {e}")
-            return False  # En caso de OperationalError, asumimos que no existe
-        finally:
-            cerrar_conexion(connection)
+
+
+
+def matricula_existe(cedula_EST):
+    """
+    Verifica si una matrícula existe en la tabla ESTUDIANTES.
+    """
+    return registro_existe("ESTUDIANTES", "CEDULA_EST", cedula_EST)
+
+def cedula_existe(cedula):
+    """
+    Verifica si una cédula existe en la tabla ESTUDIANTES.
+    """
+    return registro_existe("ESTUDIANTES", "CEDULA", cedula)
+
 
 
 def cambiar_estado_estudiante(ID_EST, nuevo_estado, descripcion):
@@ -184,3 +206,17 @@ def cambiar_estado_estudiante(ID_EST, nuevo_estado, descripcion):
         if connection.is_connected():
             cursor.close()
             connection.close()
+
+
+
+def ejecutar_consulta_unica(query, parametros):
+    connection = conectar()
+    if connection:
+        try:
+            cursor = connection.cursor(cursor_factory=RealDictCursor)
+            cursor.execute(query, parametros)
+            result = cursor.fetchone()
+            connection.commit()
+            return result
+        finally:
+            cerrar_conexion(connection)

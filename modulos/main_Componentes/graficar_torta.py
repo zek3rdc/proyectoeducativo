@@ -8,12 +8,15 @@ def crear_grafico_torta(df_estudiantes):
     y lo guarda como imagen en una ruta específica.
     """
     try:
+        # Filtrar los estudiantes activos
+        df_estudiantes_activos = df_estudiantes[df_estudiantes['Estado'] == 'Activo']
+
         # Verifica que la columna 'Género' exista
-        if 'Género' not in df_estudiantes.columns:
+        if 'Género' not in df_estudiantes_activos.columns:
             raise ValueError("La columna 'Género' no se encuentra en el DataFrame")
 
         # Contar valores de la columna 'Género'
-        genero_count = df_estudiantes['Género'].value_counts()
+        genero_count = df_estudiantes_activos['Género'].value_counts()
         
         # Colores personalizados para el gráfico de torta
         colores = ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99', '#c2c2f0']
@@ -64,7 +67,8 @@ def crear_grafico_torta(df_estudiantes):
         
         # Mostrar el gráfico en Streamlit (sin 'key' para evitar duplicados)
         try:
-            st.plotly_chart(fig, use_container_width=True)  # Mostrar el gráfico con ajuste de ancho
+            st.plotly_chart(fig, use_container_width=True, key="grafico_torta")
+  # Mostrar el gráfico con ajuste de ancho
         except Exception as e:
             st.error(f"Error al renderizar el gráfico en Streamlit: {e}")
             return None

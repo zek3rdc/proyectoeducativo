@@ -4,8 +4,47 @@ from modulos.main_Componentes import Componentes_estudiantes  # Asegúrate de qu
 from modulos import CrearTablas
 import controlador
 from modulos.main_Componentes import graficar_torta, grafico_lineal
+from modulos.Utilidades.FuncionesGenerales import subHeader
+import datetime
+import time
+
+def dashboard():
+
+    subHeader('Estudiantes', divider='rainbow',)
+        # Obtener la lista de estudiantes y padres
+    estudiantes = db_conector.obtener_ESTUDIANTES_1()
+    
+
+    # Verificar si no hay estudiantes
+    if estudiantes is None or len(estudiantes) == 0:
+        st.warning("No hay estudiantes en la base de datos.")
+
+    # Crear un DataFrame a partir de los estudiantes
+    if estudiantes:
+        df_estudiantes = CrearTablas.crear_dataframe(estudiantes)
+        df_estudiantes = Componentes_estudiantes.renombrar_columnas(df_estudiantes)
+    else:
+        df_estudiantes = None
+
+
+    if df_estudiantes is not None:
+              # 2. Gráfico lineal: frecuencia de ingreso comparado al año escolar anterior
+            st.subheader("Frecuencia de Ingreso Comparado con el Año Escolar Anterior")
+            fig2 = grafico_lineal.crear_grafico_lineal(df_estudiantes)
+            # 1. Gráfico de torta: cantidad de niñas y niños
+            with st.expander("Distribución de Género"):
+                    fig1 = graficar_torta.crear_grafico_torta(df_estudiantes)
+
+            with st.expander("Mostrar/ocultar detalles de los estudiantes"):
+                st.dataframe(df_estudiantes)
+
+
+    else:
+        st.warning("No hay estudiantes para mostrar.")
+
 
 def mostrar():
+
     st.header("Módulo de Estudiantes")
     
     # Obtener la lista de estudiantes y padres
@@ -40,95 +79,165 @@ def mostrar():
         df_estudiantes = None
 
     # Pestaña de Agregar Estudiante
+    
     with tab2:
-        # Inicializar valores en session_state si no existen
-        if "nombre_agregar" not in st.session_state:
-            st.session_state.nombre_agregar = ""
-        if "apellido_agregar" not in st.session_state:
-            st.session_state.apellido_agregar = ""
-        if "matricula_agregar" not in st.session_state:
-            st.session_state.matricula_agregar = ""
-        if "cedula_agregar" not in st.session_state:
-            st.session_state.cedula_agregar = ""
-        if "genero_input_agregar" not in st.session_state:
-            st.session_state.genero_input_agregar = "varon"
-
         # Crear formulario
         with st.form("form_agregar_estudiante"):
-            st.text_input("Nombre", key="nombre_agregar")
-            st.text_input("Apellido", key="apellido_agregar")
-            st.text_input("Matrícula", key="matricula_agregar")
-            st.text_input("Cédula", key="cedula_agregar")
-            st.selectbox("Género", ["varon", "hembra"], key="genero_input_agregar")
-            
-            padre_seleccionado = None
-            if padres_dict:
-                padre_seleccionado = st.selectbox("Seleccionar Padre", list(padres_dict.keys()))
+            nombre_agregar = st.text_input("Nombre")
+            apellido_agregar = st.text_input("Apellido")
+            cedula_agregar = st.text_input("Cédula")
+            cedula_est = st.text_input("Cédula Estudiantil")
+            genero_input_agregar = st.selectbox("Género", ["varon", "hembra"])
+            estado_agregar = st.selectbox("Estado", ["Activo", "Inactivo"])
+            condicion_agregar = st.text_input("Condición especial (opcional)")
 
-            # Botón dentro del formulario
+            # Selección de padre
+            padre_seleccionado = st.selectbox(
+                "Seleccionar Representante",
+                list(padres_dict.keys()),
+                index=0
+            ) if padres_dict else None
+
+            # Botón para enviar el formulario
             submitted = st.form_submit_button("Agregar Estudiante")
 
             if submitted:
-                if not st.session_state.matricula_agregar:
-                    st.error("La matrícula no puede estar vacía.")
-                elif db_conector.matricula_existe(st.session_state.matricula_agregar):
-                    st.error("La cédula estudiantil ya existe. Por favor, ingresa una cédula estudiantil única.")
-                elif db_conector.cedula_existe(st.session_state.cedula_agregar):
-                    st.error("La cédula ya existe. Por favor, ingresa una cédula única.")
+                # Validar campos requeridos
+                errores = []
+
+                # Validación de nombre y apellido
+                if not nombre_agregar.strip():
+                    errores.append("El nombre no puede estar vacío.")
+                if not apellido_agregar.strip():
+                    errores.append("El apellido no puede estar vacío.")
+
+                # Validación de cédula
+                if not cedula_agregar.strip():
+                    errores.append("La cédula no puede estar vacía.")
+                elif not cedula_agregar.isdigit():
+                    errores.append("La cédula debe ser numérica.")
+                elif db_conector.cedula_existe(cedula_agregar):
+                    errores.append("La cédula ya existe. Por favor, ingresa una cédula única.")
+
+                # Mostrar errores si los hay
+                if errores:
+                    for error in errores:
+                        st.error(error)
                 else:
-                    id_padre = padres_dict.get(padre_seleccionado) if padre_seleccionado else None
-                    if id_padre:
-                        id_nuevo_estudiante = Componentes_estudiantes.agregar_estudiante(
-                            st.session_state.nombre_agregar,
-                            st.session_state.apellido_agregar,
-                            st.session_state.matricula_agregar,
-                            st.session_state.cedula_agregar,
-                            id_padre,
-                            st.session_state.genero_input_agregar
-                        )
-                        st.success("Estudiante agregado y vinculado al padre exitosamente.")
+                    # Asignar el ID del representante seleccionado
+                    id_representante = padres_dict.get(padre_seleccionado) if padre_seleccionado else None
                     
+                    # Usar la fecha actual para el registro
+                    fecha_registro = datetime.datetime.now().date()  # Obtener la fecha actual
+
+                    # Insertar estudiante en la base de datos
+                    id_nuevo_estudiante = Componentes_estudiantes.agregar_estudiante(
+                        nombre=nombre_agregar.strip(),
+                        apellido=apellido_agregar.strip(),
+                        cedula=int(cedula_agregar.strip()),
+                        cedula_est=int(cedula_est.strip()),
+                        genero=genero_input_agregar,
+                        id_representante=id_representante,
+                        estado=estado_agregar,
+                        descripcion_estado=condicion_agregar.strip() or "N/A",
+                        fecha_reg=fecha_registro
+                    )
+
+                    # Mostrar el mensaje de éxito o de error
+                    if isinstance(id_nuevo_estudiante, str):  # Si el mensaje de error es una cadena
+                        st.error(id_nuevo_estudiante)
+                    else:
+                        st.success("Estudiante agregado exitosamente.")
+                        time.sleep(2)  # Esperar 2 segundos antes de continuar
+                        st.experimental_rerun()  # Recargar la página para que desaparezca el mensaje
+            
         
     # Pestaña de Modificar Estudiante
     with tab3:
         st.subheader("Modificar Estudiante")
         
-        # Mostrar el DataFrame de estudiantes antes de modificar
-        if df_estudiantes is not None:
-            st.write("Lista de Estudiantes")
-            st.dataframe(df_estudiantes)
-
         if estudiantes_dict:
-            # Almacenar el estudiante seleccionado en session_state
-            if "estudiante_seleccionado" not in st.session_state:
-                st.session_state["estudiante_seleccionado"] = list(estudiantes_dict.keys())[0]  # Primer estudiante por defecto
+            # Seleccionar estudiante
+            estudiante_seleccionado = st.selectbox(
+                "Seleccionar Estudiante para Modificar",
+                list(estudiantes_dict.keys()),
+            )
+            
+            # Obtener los datos del estudiante seleccionado
+            est_data = estudiantes_dict[estudiante_seleccionado]
+            
+            # Crear formulario
+            with st.form("form_modificar_estudiante"):
+                nombre_modificar = st.text_input("Nuevo Nombre", value=est_data['NOMBRE_EST'])
+                apellido_modificar = st.text_input("Nuevo Apellido", value=est_data['APELLIDO_EST'])
+                cedula_modificar = st.text_input("Nueva Cédula", value=str(est_data['CI_EST']))
+                cedula_est_modificar = st.text_input("Nueva Cédula Estudiantil", value=str(est_data['CEDULA_EST']))
+                # Normalizar el valor de 'GENERO' a minúsculas antes de buscar en la lista
+                genero_modificar = st.selectbox(
+                    "Nuevo Género", 
+                    ["varon", "hembra"], 
+                    index=["varon", "hembra"].index(est_data['GENERO'].lower())
+                )
 
-            # Selección del estudiante para modificar
-            estudiante_seleccionado = st.selectbox("Seleccionar Estudiante para Modificar", list(estudiantes_dict.keys()), key="select_estudiante_modificar", index=list(estudiantes_dict.keys()).index(st.session_state["estudiante_seleccionado"]))
-            
-            # Actualizar el estudiante seleccionado en session_state
-            st.session_state["estudiante_seleccionado"] = estudiante_seleccionado
-            
-            if estudiante_seleccionado:
-                est_data = estudiantes_dict[estudiante_seleccionado]
                 
-                # Crear formulario para modificar el estudiante
-                with st.form(key="form_modificar_estudiante"):
-                    # Asegúrate de que est_data contenga las claves correctas
-                    nuevo_nombre = st.text_input("Nuevo Nombre", value=est_data['nombre_est'], key="nuevo_nombre_input_modificar")
-                    nuevo_apellido = st.text_input("Nuevo Apellido", value=est_data['apellido_est'], key="nuevo_apellido_input_modificar")
-                    nueva_matricula = st.text_input("Nueva Matrícula", value=est_data['ci_est'], key="nueva_matricula_input_modificar")
-                    nueva_cedula = st.text_input("Nueva Cédula", value=est_data['cedula_est'], key="nueva_cedula_input_modificar")
+                condicion_modificar = st.text_input("Condición Especial (opcional)", value=est_data.get('CONDICION', ''))
 
-                    # Botón de envío dentro del formulario
-                    submitted = st.form_submit_button("Modificar Estudiante")
+                # Botón para enviar el formulario
+                submitted = st.form_submit_button("Modificar Estudiante")
 
-                    if submitted:
-                        # Llama a la función modificando la llamada para pasar el diccionario completo
-                        Componentes_estudiantes.modificar_estudiante(est_data, nuevo_nombre, nuevo_apellido, nueva_matricula, nueva_cedula)
-                        st.success("Estudiante modificado exitosamente")
+                if submitted:
+                    # Validar campos requeridos
+                    errores = []
+
+                    # Validación de nombre y apellido
+                    if not nombre_modificar.strip():
+                        errores.append("El nombre no puede estar vacío.")
+                    if not apellido_modificar.strip():
+                        errores.append("El apellido no puede estar vacío.")
+                    
+                    # Validación de cédula
+                    if not cedula_modificar.strip():
+                        errores.append("La cédula no puede estar vacía.")
+                    elif not cedula_modificar.isdigit():
+                        errores.append("La cédula debe ser numérica.")
+                    elif db_conector.cedula_existe(cedula_modificar) and cedula_modificar != str(est_data['CI_EST']):
+                        errores.append("La cédula ya existe. Por favor, ingresa una cédula única.")
+                    
+                    # Validación de cédula estudiantil
+                    if not cedula_est_modificar.strip():
+                        errores.append("La cédula estudiantil no puede estar vacía.")
+                    elif not cedula_est_modificar.isdigit():
+                        errores.append("La cédula estudiantil debe ser numérica.")
+                    elif db_conector.matricula_existe(cedula_est_modificar) and cedula_est_modificar != str(est_data['CEDULA_EST']):
+                        errores.append("La cédula estudiantil ya existe. Por favor, ingresa una cédula estudiantil única.")
+
+                    # Mostrar errores si los hay
+                    if errores:
+                        for error in errores:
+                            st.error(error)
+                    else:
+                        # Modificar estudiante en la base de datos
+                        exito = Componentes_estudiantes.modificar_estudiante(
+                            id_estudiante=est_data['ID_EST'],
+                            nuevo_nombre=nombre_modificar.strip(),
+                            nuevo_apellido=apellido_modificar.strip(),
+                            nueva_cedula=int(cedula_modificar.strip()),
+                            nueva_cedula_est=int(cedula_est_modificar.strip()),
+                            nuevo_genero=genero_modificar,
+                      
+                            nueva_condicion=condicion_modificar.strip() or "N/A"
+                        )
+                        
+                        # Mostrar mensaje según el resultado
+                        if exito:
+                            st.success("Estudiante modificado exitosamente.")
+                            time.sleep(2)  # Esperar 2 segundos antes de continuar
+                            st.experimental_rerun()  # Recargar la página para reflejar los cambios
+                        else:
+                            st.error("Ocurrió un error al modificar el estudiante. Por favor, verifica los datos e intenta nuevamente.")
         else:
             st.warning("No hay estudiantes para modificar.")
+
 
 
     # Pestaña de Cambiar Estado de Estudiante
@@ -164,31 +273,35 @@ def mostrar():
     # Pestaña de Lista de Estudiantes
     with tab5:
         st.subheader("Resumen Estudiantes")
-        
+
         if df_estudiantes is not None:
-            # Mostrar la lista de estudiantes
-            st.write("Lista de Estudiantes")
-            st.dataframe(df_estudiantes)
+            # Filtrar estudiantes activos
+            df_estudiantes_activos = df_estudiantes[df_estudiantes['Estado'] == 'Activo']
 
             # 1. Gráfico de torta: cantidad de niñas y niños
             st.subheader("Distribución de Género")
-            fig1 = graficar_torta.crear_grafico_torta(df_estudiantes)
-            
+            fig1 = graficar_torta.crear_grafico_torta(df_estudiantes_activos)
+
+            with st.expander("Mostrar/ocultar información de género"):
+                # Crear un DataFrame solo con la información de género
+                df_genero = df_estudiantes_activos[['Nombre Estudiante', 'Apellido Estudiante', 'Género']]
+                st.dataframe(df_genero)
 
             # 2. Gráfico lineal: frecuencia de ingreso comparado al año escolar anterior
             st.subheader("Frecuencia de Ingreso Comparado con el Año Escolar Anterior")
-            fig2 = grafico_lineal.crear_grafico_lineal(df_estudiantes)
-            st.pyplot(fig2)
+            fig2 = grafico_lineal.crear_grafico_lineal(df_estudiantes_activos)
 
-            # 3. Tabla desplegable para ver más detalles de los estudiantes
-            st.subheader("Ver Estudiantes Detalladamente")
-            st.dataframe(df_estudiantes)
+            with st.expander("Mostrar/ocultar información de ingreso"):
+                # Crear un DataFrame solo con la información de ingreso
+                df_frecuencia = df_estudiantes_activos[['Nombre Estudiante', 'Apellido Estudiante', 'Fecha de Registro']]
+                st.dataframe(df_frecuencia)
 
-            # 4. Tabla grande con todos los estudiantes
+            # 4. Tabla grande con todos los estudiantes activos
             st.subheader("Información Completa de Todos los Estudiantes")
             st.dataframe(df_estudiantes)
         else:
             st.warning("No hay estudiantes para mostrar.")
+
 # Usar session_state para mantener la ejecución controlada
 if "initialized" not in st.session_state:
     st.session_state.initialized = True

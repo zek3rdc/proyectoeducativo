@@ -1,0 +1,9 @@
+# config.toml
+
+# Habilitar el modo de diseño amplio (wide mode)
+[ui]
+wideMode = true
+
+# Habilitar "Run on Save"
+[server]
+runOnSave = true
