@@ -84,3 +84,46 @@ def crear_grafico_lineal(df_estudiantes):
     except Exception as e:
         st.error(f"Ha ocurrido un error inesperado: {e}")
         return None
+
+
+
+def crear_grafico_lineal_secciones(data, x_col, y_col):
+    """
+    Crea un gráfico lineal interactivo.
+
+    Args:
+        data (list): Datos a graficar.
+        x_col (str): Nombre de la columna para el eje X.
+        y_col (str): Nombre de la columna para el eje Y.
+    """
+    if not data:
+        st.write("No hay datos disponibles para graficar.")
+        return
+
+    # Convertir datos a DataFrame
+    df = pd.DataFrame(data)
+    if x_col not in df.columns or y_col not in df.columns:
+        st.write("Las columnas especificadas no existen en los datos.")
+        return
+
+    # Crear gráfico lineal
+    fig = go.Figure(data=[go.Scatter(
+        x=df[x_col],
+        y=df[y_col],
+        mode='lines+markers',
+        line=dict(color='blue', width=2),
+        marker=dict(size=8)
+    )])
+
+    # Configuración del gráfico
+    fig.update_layout(
+        title="Gráfico Lineal",
+        xaxis_title=x_col,
+        yaxis_title=y_col,
+        margin=dict(t=40, b=40, l=40, r=40),
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)'
+    )
+
+    # Mostrar gráfico en Streamlit
+    st.plotly_chart(fig, use_container_width=True)
