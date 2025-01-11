@@ -40,7 +40,7 @@ def app():
     st.title("Sistema de Gestión Escolar")
 
     # Configurar barra lateral
-    menu = ["Dashboard", "Calificaciones", "Asistencias", "Profesores", "Estudiantes", "Rendimiento", "Secciones"]
+    menu = ["Dashboard", "Calificaciones", "Asistencias", "Personal", "Estudiantes", "Rendimiento", "Secciones"]
     opcion = st.sidebar.selectbox("Selecciona el módulo", menu)
 
     # Mostrar contenido según la opción seleccionada
@@ -50,7 +50,7 @@ def app():
         calificaciones.mostrar()
     elif opcion == "Asistencias":
         asistencias.mostrar()
-    elif opcion == "Profesores":
+    elif opcion == "Personal":
         profesores.mostrar()
     elif opcion == "Estudiantes":
         estudiantes.mostrar()

@@ -176,67 +176,80 @@ def editar_seccion():
     st.subheader("Editar Sección")
     
     # Obtener las secciones desde la base de datos
-    secciones = db_conector.obtener_secciones()  # Asumimos que esta función obtiene las secciones
+    secciones = db_conector.obtener_secciones()
     
     if not secciones:
         st.error("No se encontraron secciones para editar.")
         return
     
     # Seleccionar la sección a editar
-    seccion_seleccionada = st.selectbox("Seleccionar Sección a Editar", [seccion[1] for seccion in secciones])  # Usamos el nombre de la sección
+    seccion_seleccionada = st.selectbox(
+        "Seleccionar Sección a Editar", 
+        [seccion[1] for seccion in secciones]  # Usamos el nombre de la sección
+    )
     
     # Obtener los detalles de la sección seleccionada
     seccion_data = next(seccion for seccion in secciones if seccion[1] == seccion_seleccionada)
-
-
     
-    # Mostrar los datos actuales de la sección
     with st.form("form_editar_seccion"):
+        # Campo para editar el nombre de la sección
         nuevo_nombre = st.text_input("Nuevo Nombre de la Sección", value=seccion_data[1])
         
-        # Obtener los grados y profesores existentes para los selectbox
-        grados = componentes_secciones.obtener_grados()  # Esta función retorna los grados existentes
+        # Obtener los grados existentes
+        grados = componentes_secciones.obtener_grados()
         grados_nombres = [grado[1] for grado in grados]
-        nuevo_grado = st.selectbox("Nuevo Grado", grados_nombres, index=grados_nombres.index(seccion_data[2]))
         
-        # Obtener los profesores con su cédula
-        profesores = componentes_secciones.obtener_profesores()  # Esta función retorna los profesores existentes
-        # Modificar la lista para que incluya el nombre completo junto con la cédula
-        profesores_nombres = [f"{prof[1]} {prof[2]} ({prof[3]})" for prof in profesores]
+        # Campo para seleccionar un nuevo grado
+        nuevo_grado = st.selectbox(
+            "Nuevo Grado", 
+            grados_nombres, 
+            index=grados_nombres.index(seccion_data[2])
+        )
         
-        # Verificar si el profesor actual se encuentra en la lista de profesores
-        # Actualizar el índice en base a la estructura real de seccion_data
-        profesor_actual = f"{seccion_data[3]}"  # Suponemos que seccion_data[3] es el nombre del profesor y seccion_data[4] es la cédula del profesor
+        # Obtener los profesores existentes
+        profesores = componentes_secciones.obtener_profesores()
+        # Crear una lista de nombres completos con cédula para mostrar en el selectbox
+        profesores_nombres_completos = [f"{prof[1]} {prof[2]} ({prof[3]})" for prof in profesores]  # Nombre completo con cédula
+        profesores_nombres = [f"{prof[1]} {prof[2]}" for prof in profesores]  # Solo nombre y apellido
+        
+        # Obtener el índice del profesor actual
+        profesor_actual = f"{seccion_data[3]}"  # Nombre completo del profesor actual (solo nombre y apellido)
         
         if profesor_actual in profesores_nombres:
-            nuevo_profesor = st.selectbox("Nuevo Profesor", profesores_nombres, index=profesores_nombres.index(profesor_actual))
+            index_profesor_actual = profesores_nombres.index(profesor_actual)
         else:
-            # Si no se encuentra, seleccionar un valor por defecto (el primer valor en la lista)
-            nuevo_profesor = st.selectbox("Nuevo Profesor", profesores_nombres)
-            st.warning(f"El profesor actual no se encuentra en la lista, se seleccionó el primero por defecto.")
+            st.warning("El profesor actual no se encuentra en la lista. Selecciona uno nuevo.")
+            index_profesor_actual = 0  # Seleccionar el primer profesor por defecto
         
+        # Campo para seleccionar un nuevo profesor
+        nuevo_profesor_completo = st.selectbox(
+            "Nuevo Profesor", 
+            profesores_nombres_completos, 
+            index=index_profesor_actual
+        )
+        
+        # Botón para actualizar
         submitted = st.form_submit_button("Actualizar Sección")
-        
         if submitted:
-            try:
-                # Obtener los ID del grado y profesor seleccionados
-                grado_id = next(grado[0] for grado in grados if grado[1] == nuevo_grado)
-                
-                # Extraer el ID del profesor a partir del nombre y cédula seleccionados
-                nombre_profesor = nuevo_profesor.split(" (")[0]
-                cedula_profesor = nuevo_profesor.split(" (")[1][:-1]  # Extraemos la cédula, eliminando el paréntesis final
-                
-                # Buscar el ID del profesor según el nombre y la cédula
-                profesor_id = next(prof[0] for prof in profesores if f"{prof[1]} {prof[2]} ({prof[3]})" == nuevo_profesor)
-                
-                # Llamar a la función para actualizar la sección en la base de datos
-                if componentes_secciones.editar_seccion_db(seccion_data[0], nuevo_nombre, grado_id, profesor_id):  # seccion_data[0] es el ID de la sección
-                    st.success(f"Sección '{nuevo_nombre}' actualizada exitosamente.")
-                else:
-                    st.error("Hubo un error al actualizar la sección.")
+            # Obtener los IDs correspondientes al grado y profesor seleccionados
+            nuevo_grado_id = next((grado[0] for grado in grados if grado[1] == nuevo_grado), None)
+            # Obtener el ID del profesor usando el nombre completo con cédula
+            nuevo_profesor_id = next(
+                (prof[0] for prof in profesores if f"{prof[1]} {prof[2]} ({prof[3]})" == nuevo_profesor_completo), 
+                None
+            )
             
-            except Exception as e:
-                st.error(f"Error al actualizar la sección: {e}")
+            if nuevo_profesor_id and nuevo_grado_id:
+                actualizado = componentes_secciones.editar_seccion_db(
+                    seccion_data[0],  # ID de la sección
+                    nuevo_nombre,
+                    nuevo_grado_id,
+                    nuevo_profesor_id
+                )
+                if actualizado:
+                    st.success("Sección actualizada exitosamente.")
+                else:
+                    st.error("No se pudo actualizar la sección.")
 
 
 

@@ -33,10 +33,25 @@ def agregar_seccion_db(nombre_seccion, grado_id, profesor_id):
         return False
 
 
-
 def obtener_profesores():
+    """
+    Obtiene los profesores con el rol 'PROFESOR' desde la base de datos.
+    """
     try:
-        query = "SELECT \"ID_PROF\", \"NOMBRE_PROF\", \"APELLIDO_PROF\",\"CEDULA_PROF\"  FROM public.\"PROFESORES\" ORDER BY \"NOMBRE_PROF\";"
+        query = """
+        SELECT 
+            "ID_PROF", 
+            "NOMBRE_PROF", 
+            "APELLIDO_PROF", 
+            "CEDULA_PROF", 
+            "ROL" 
+        FROM 
+            public."PROFESORES" 
+        WHERE 
+            "ROL" = 'PROFESOR'
+        ORDER BY 
+            "NOMBRE_PROF";
+        """
         return db_conector.obtener_datos(query)
     except Exception as e:
         st.error(f"Error al obtener los profesores: {e}")

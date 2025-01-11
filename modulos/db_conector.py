@@ -574,3 +574,22 @@ def listar_calificaciones(id_seccion):
         WHERE c."ID_SECCION" = %s;
     '''
     return ejecutar_consulta_unica(query, (id_seccion,))
+
+def listar_profesores():
+    """
+    Obtiene la lista de profesores desde la base de datos, incluyendo aquellos sin rol asignado.
+    """
+    query = '''
+        SELECT 
+            p."ID_PROF" AS id_profesor,
+            p."NOMBRE_PROF" AS nombre,
+            p."APELLIDO_PROF" AS apellido,
+            p."CEDULA_PROF" AS cedula,
+            p."TELEFONO_PROF" AS telefono,
+            p."DIRECCION_PROF" AS direccion,
+            p."EMAIL_PROF" AS email,
+            COALESCE(r."ROL", 'Sin Rol') AS rol  -- Si no tiene rol, mostramos 'Sin Rol'
+        FROM public."PROFESORES" p
+        LEFT JOIN public."ROLES" r ON p."ID_ROL" = r."ID_ROL";
+    '''
+    return ejecutar_query(query)
