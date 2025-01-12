@@ -1,6 +1,7 @@
 import psycopg2
 from psycopg2 import OperationalError
 from psycopg2.extras import RealDictCursor
+import pandas as pd
 
 def conectar():
     try:
@@ -61,24 +62,32 @@ def obtener_ESTUDIANTES_1():
             cursor = connection.cursor(cursor_factory=RealDictCursor)
             
             cursor.execute("""
-            SELECT 
-                e."ID_EST",
-                e."NOMBRE_EST",
-                e."APELLIDO_EST",
-                e."CEDULA" AS "CI_EST", -- Columna corregida según la definición de la base de datos
-                e."CEDULA_EST",
-                e."ESTADO",
-                e."DESCRIPCION_ESTADO" AS "DESCRIPCION", -- Usar la columna correcta
-                e."GENERO",
-                e."CONDICION",
-                p."ID_REP",
-                p."NOMBRE_REP" AS "NOMBRE_REPRE",
-                p."APELLIDO_REP" AS "APELLIDO_REPRE",
-                p."CEDULA_REP",
-                e."FECHA_REG"
-            FROM "ESTUDIANTES" e
-            JOIN "REPRE_EST" pe ON e."ID_EST" = pe."ID_EST"
-            JOIN "REPRESENTANTES" p ON p."ID_REP" = pe."ID_REPRE";
+SELECT 
+    e."ID_EST",
+    e."NOMBRE_EST",
+    e."APELLIDO_EST",
+    e."CEDULA" AS "CI_EST",  -- Columna corregida según la definición de la base de datos
+    e."CEDULA_EST",
+    e."ESTADO",
+    e."DESCRIPCION_ESTADO" AS "DESCRIPCION",  -- Usar la columna correcta
+    e."GENERO",
+    e."CONDICION",
+    p."ID_REP",
+    p."NOMBRE_REP" AS "NOMBRE_REPRE",
+    p."APELLIDO_REP" AS "APELLIDO_REPRE",
+    p."CEDULA_REP",
+    e."FECHA_REG",
+    s."NOMBRE_SECCION" AS "SECCION_ASIGNADA"  -- Agregar la sección asignada
+FROM 
+    "ESTUDIANTES" e
+JOIN 
+    "REPRE_EST" pe ON e."ID_EST" = pe."ID_EST"
+JOIN 
+    "REPRESENTANTES" p ON p."ID_REP" = pe."ID_REPRE"
+LEFT JOIN 
+    "ASIGNACION_EST" ae ON e."ID_EST" = ae."ID_EST"  -- Relación con la tabla de asignaciones
+LEFT JOIN 
+    "SECCIONES" s ON ae."ID_SECCION" = s."ID_SECCION"  -- Obtener el nombre de la sección
             """)
             
             # Obtener todos los resultados de la consulta
@@ -95,25 +104,6 @@ def obtener_ESTUDIANTES_1():
 
 
 
-
-def obtener_secciones():
-    connection = conectar()
-    if connection:
-        try:
-            cursor = connection.cursor(dictionary=True)
-            cursor.execute("SELECT * FROM SECCIONES")
-            secciones = cursor.fetchall()
-            
-            # Imprimir las secciones para depuración
-            print("Secciones obtenidas:", secciones)  # Verifica los datos obtenidos
-
-            # Retorna las secciones obtenidas
-            return secciones
-        except OperationalError as e:
-            print(f"OperationalError al consultar secciones: {e}")
-            return None
-        finally:
-            cerrar_conexion(connection)
 def obtener_padres():
     connection = conectar()
     if connection:
@@ -224,45 +214,6 @@ def ejecutar_consulta_unica(query, parametros):
 
 
 
-def obtener_secciones():
-    try:
-        # Establecemos la conexión con la base de datos
-        conn = conectar()  # Asegúrate de que la función conectar() esté definida correctamente
-        cursor = conn.cursor()
-
-        # Consulta SQL para obtener las secciones, grados y profesores con la cédula
-        query = """
-        SELECT 
-            s."ID_SECCION", 
-            s."NOMBRE_SECCION", 
-            g."NOMBRE_GRADO", 
-            p."NOMBRE_PROF" || ' ' || p."APELLIDO_PROF" || ' (' || p."CEDULA_PROF" || ')' AS "PROFESOR"
-        FROM 
-            public."SECCIONES" s
-        JOIN 
-            public."GRADOS" g ON s."ID_GRADO" = g."ID_GRADOS"
-        JOIN 
-            public."PROFESORES" p ON s."ID_PROF" = p."ID_PROF"
-        ORDER BY 
-            s."ID_SECCION";
-        """
-
-        # Ejecutamos la consulta
-        cursor.execute(query)
-        # Obtenemos todos los resultados
-        secciones = cursor.fetchall()
-
-        # Cerramos la conexión
-        cursor.close()
-        conn.close()
-
-        return secciones
-
-    except Exception as e:
-        return []
-
-
-
 def obtener_datos(query, parametros=None):
     """
     Ejecuta una consulta SELECT y devuelve los resultados.
@@ -300,7 +251,7 @@ def obtener_secciones():
         query = """
         SELECT 
             s."ID_SECCION", 
-            s."NOMBRE_SECCION", 
+            s."NOMBRE_SECCION" AS "NOMBRE_SECCION",  -- Renombrando aquí
             g."NOMBRE_GRADO", 
             p."NOMBRE_PROF" || ' ' || p."APELLIDO_PROF" AS "PROFESOR"
         FROM 
@@ -311,6 +262,7 @@ def obtener_secciones():
             public."PROFESORES" p ON s."ID_PROF" = p."ID_PROF"
         ORDER BY 
             s."ID_SECCION";
+
         """
         cursor.execute(query)
         secciones = cursor.fetchall()
@@ -593,3 +545,159 @@ def listar_profesores():
         LEFT JOIN public."ROLES" r ON p."ID_ROL" = r."ID_ROL";
     '''
     return ejecutar_query(query)
+
+def obtener_secciones_rendimiento():
+    """
+    Obtiene las secciones desde la base de datos.
+    """
+    query = '''
+        SELECT DISTINCT "ID_SECCION", "NOMBRE_SECCION"
+        FROM public."SECCIONES";
+    '''
+    resultados = ejecutar_query(query)
+    return [f"{row['ID_SECCION']} - {row['NOMBRE_SECCION']}" for row in resultados]
+
+def obtener_materias():
+    """
+    Obtiene las materias desde la base de datos.
+    """
+    query = '''
+        SELECT DISTINCT "ID_MATERIA", "NOMBRE_MATERIA"
+        FROM public."MATERIAS";
+    '''
+    resultados = ejecutar_query(query)
+    return [f"{row['ID_MATERIA']} - {row['NOMBRE_MATERIA']}" for row in resultados]
+
+def obtener_anios_escolares():
+    """
+    Obtiene los años escolares desde la base de datos.
+    """
+    query = '''
+        SELECT DISTINCT "YEAR_ESCOLAR"
+        FROM public."CALIFICACIONES"
+        ORDER BY "YEAR_ESCOLAR" DESC;
+    '''
+    resultados = ejecutar_query(query)
+    return [row['YEAR_ESCOLAR'] for row in resultados]
+
+def obtener_calificaciones(seccion, materia, year_escolar):
+    """
+    Obtiene las calificaciones filtradas por sección, materia y año escolar.
+    """
+    condiciones = []
+    parametros = []
+
+    # Agregar condiciones dinámicas basadas en los filtros
+    if seccion != "Ver Todo":
+        id_seccion = seccion.split(" - ")[0]
+        condiciones.append('cal."ID_SECCION" = %s')
+        parametros.append(id_seccion)
+
+    if materia != "Ver Todo":
+        id_materia = materia.split(" - ")[0]
+        condiciones.append('cal."ID_MATERIA" = %s')
+        parametros.append(id_materia)
+
+    if year_escolar != "Ver Todo":
+        condiciones.append('cal."YEAR_ESCOLAR" = %s')
+        parametros.append(year_escolar)
+
+    # Construir el WHERE dinámico
+    where_clause = f"WHERE {' AND '.join(condiciones)}" if condiciones else ""
+
+    query = f'''
+        SELECT 
+            est."ID_EST",
+            est."NOMBRE_EST",
+            est."APELLIDO_EST",
+            cal."CALIFICACION",
+            mat."NOMBRE_MATERIA",
+            sec."NOMBRE_SECCION",
+            cal."YEAR_ESCOLAR",
+            cal."FECHA_CALIFICACION"
+        FROM public."CALIFICACIONES" cal
+        JOIN public."ESTUDIANTES" est ON cal."ID_EST" = est."ID_EST"
+        JOIN public."MATERIAS" mat ON cal."ID_MATERIA" = mat."ID_MATERIA"
+        JOIN public."SECCIONES" sec ON cal."ID_SECCION" = sec."ID_SECCION"
+        {where_clause}
+        ORDER BY cal."FECHA_CALIFICACION" DESC;
+    '''
+    resultados = ejecutar_query(query, parametros)
+    return pd.DataFrame(resultados)
+
+def asignar_estudiante_a_seccion(id_estudiante, id_seccion):
+    """
+    Asigna un estudiante a una sección específica y le asigna las materias de esa sección.
+    Args:
+        id_estudiante (int): ID del estudiante.
+        id_seccion (int): ID de la sección a asignar.
+    Returns:
+        bool: True si la asignación fue exitosa, False si hubo un error.
+    """
+    try:
+        # Asegurarse de que los IDs sean de tipo int
+        id_estudiante = int(id_estudiante)
+        id_seccion = int(id_seccion)
+
+        # Conectar a la base de datos
+        conn = conectar()  # Usamos la función que ya tienes para conectar a la base de datos
+        cursor = conn.cursor()
+
+        # Verificar si el estudiante ya está asignado a la sección
+        query_check = """
+        SELECT COUNT(*) 
+        FROM "ASIGNACION_EST"
+        WHERE "ID_EST" = %s AND "ID_SECCION" = %s;
+        """
+        cursor.execute(query_check, (id_estudiante, id_seccion))
+        result = cursor.fetchone()
+        if result[0] > 0:
+            # El estudiante ya está asignado a esta sección
+            print(f"El estudiante {id_estudiante} ya está asignado a la sección {id_seccion}.")
+            cursor.close()
+            conn.close()
+            return False
+
+        # Insertar la asignación del estudiante a la sección
+        query_insert = """
+        INSERT INTO "ASIGNACION_EST" ("ID_EST", "ID_SECCION", "YEAR_ESCOLAR", "FECHA_ASIGNACION")
+        VALUES (%s, %s, NOW(), NOW());
+        """
+        cursor.execute(query_insert, (id_estudiante, id_seccion))
+        conn.commit()  # Confirmar la asignación del estudiante a la sección
+
+        # Obtener las materias asociadas a la sección
+        query_materias = """
+        SELECT "ID_MATERIA" 
+        FROM "SECCIONES_MATERIAS"
+        WHERE "ID_SECCION" = %s;
+        """
+        cursor.execute(query_materias, (id_seccion,))
+        materias = cursor.fetchall()
+
+        if not materias:
+            print("La sección no tiene materias asignadas.")
+            cursor.close()
+            conn.close()
+            return False
+
+        # Asignar las materias al estudiante con una calificación de 0
+        query_insert_calificacion = """
+        INSERT INTO "CALIFICACIONES" ("ID_EST", "ID_MATERIA", "ID_SECCION", "CALIFICACION", "YEAR_ESCOLAR", "FECHA_CALIFICACION")
+        VALUES (%s, %s, %s, 0, NOW(), NOW());
+        """
+        for materia in materias:
+            cursor.execute(query_insert_calificacion, (id_estudiante, materia[0], id_seccion))
+        
+        conn.commit()  # Confirmar las calificaciones
+
+        # Cerrar la conexión
+        cursor.close()
+        conn.close()
+
+        return True  # La asignación fue exitosa
+    except Exception as e:
+        print(f"Error al asignar el estudiante a la sección: {e}")
+        if conn:
+            conn.rollback()  # Revertir cambios en caso de error
+        return False  # Retornamos False en caso de error

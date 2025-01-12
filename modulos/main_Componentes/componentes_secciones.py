@@ -40,22 +40,28 @@ def obtener_profesores():
     try:
         query = """
         SELECT 
-            "ID_PROF", 
-            "NOMBRE_PROF", 
-            "APELLIDO_PROF", 
-            "CEDULA_PROF", 
-            "ROL" 
+            p."ID_PROF" AS id_profesor,
+            p."NOMBRE_PROF" AS nombre,
+            p."APELLIDO_PROF" AS apellido,
+            p."CEDULA_PROF" AS cedula,
+            r."ROL" AS rol
         FROM 
-            public."PROFESORES" 
+            public."PROFESORES" p
+        INNER JOIN 
+            public."ROLES" r 
+        ON 
+            p."ID_ROL" = r."ID_ROL"
         WHERE 
-            "ROL" = 'PROFESOR'
+            r."ROL" = 'PROFESOR'
         ORDER BY 
-            "NOMBRE_PROF";
+            p."NOMBRE_PROF";
         """
+        # Ejecuta el query y devuelve los datos
         return db_conector.obtener_datos(query)
     except Exception as e:
         st.error(f"Error al obtener los profesores: {e}")
         return []
+
 
 def editar_seccion_db(id_seccion, nuevo_nombre, id_grado, id_profesor):
     try:

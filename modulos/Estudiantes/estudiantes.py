@@ -7,6 +7,7 @@ from modulos.main_Componentes import graficar_torta, grafico_lineal
 from modulos.Utilidades.FuncionesGenerales import subHeader
 import datetime
 import time
+import pandas as pd
 
 def dashboard():
 
@@ -69,7 +70,7 @@ def mostrar():
         padres_dict = {f"{padre['NOMBRE_REP']} {padre['APELLIDO_REP']} - Cédula: {padre['CEDULA_REP']} (ID: {padre['ID_REP']})": padre['ID_REP'] for padre in padres}
 
     # Crear pestañas
-    tab2, tab3, tab4, tab5 = st.tabs(["Agregar Estudiante", "Modificar Estudiante", "Cambiar estado Estudiante", "Lista de Estudiantes"])
+    tab2, tab3, tab4, tab5, tab6 = st.tabs(["Agregar Estudiante", "Modificar Estudiante", "Cambiar estado Estudiante", "Asignar Seccion","Lista de Estudiantes"])
 
     # Crear un DataFrame a partir de los estudiantes
     if estudiantes:
@@ -271,7 +272,7 @@ def mostrar():
             st.warning("Seleccione al menos un estudiante y complete los campos para cambiar el estado.")
 
     # Pestaña de Lista de Estudiantes
-    with tab5:
+    with tab6:
         st.subheader("Resumen Estudiantes")
 
         if df_estudiantes is not None:
@@ -302,7 +303,45 @@ def mostrar():
         else:
             st.warning("No hay estudiantes para mostrar.")
 
-# Usar session_state para mantener la ejecución controlada
+        # Cargar estudiantes y secciones
+
+# Mostrar la interfaz en el tab5
+    with tab5:
+        st.subheader("Asignar Sección a Estudiante")
+        secciones = db_conector.obtener_secciones()  # Lista de secciones
+        df_secciones = pd.DataFrame(secciones, columns=["ID_SECCION", "NOMBRE_SECCION", "GRADO", "PROFESOR"])
+        
+        # Mostrar las tablas de estudiantes y secciones
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("Estudiantes")
+            st.dataframe(df_estudiantes)
+
+        with col2:
+            st.subheader("Secciones")
+            st.dataframe(df_secciones)
+
+        # Crear los selectores para seleccionar un estudiante y una sección
+        selected_estudiante = st.selectbox("Selecciona un estudiante", df_estudiantes['Nombre Estudiante'] + ' ' + df_estudiantes['Apellido Estudiante'])
+        selected_seccion = st.selectbox("Selecciona una sección", df_secciones['NOMBRE_SECCION'])
+
+        # Obtener los IDs de los seleccionados
+        id_estudiante = df_estudiantes[df_estudiantes['Nombre Estudiante'] + ' ' + df_estudiantes['Apellido Estudiante'] == selected_estudiante].iloc[0]['ID Estudiante']
+        id_seccion = df_secciones[df_secciones['NOMBRE_SECCION'] == selected_seccion].iloc[0]['ID_SECCION']
+
+        # Botón para asignar la sección al estudiante
+        if st.button("Asignar Sección"):
+            # Intentamos asignar la sección
+            resultado = db_conector.asignar_estudiante_a_seccion(id_estudiante, id_seccion)
+            
+            if resultado:
+                st.success(f"Sección '{selected_seccion}' asignada exitosamente al estudiante '{selected_estudiante}'.")
+            else:
+                # Aquí puedes personalizar el mensaje si el estudiante ya está asignado
+                st.error(f"El estudiante '{selected_estudiante}' ya está asignado a la sección '{selected_seccion}'.")
+
+
 if "initialized" not in st.session_state:
     st.session_state.initialized = True
     mostrar()
