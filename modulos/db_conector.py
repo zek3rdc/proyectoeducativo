@@ -68,6 +68,8 @@ SELECT
     e."APELLIDO_EST",
     e."CEDULA" AS "CI_EST",  -- Columna corregida según la definición de la base de datos
     e."CEDULA_EST",
+    e."EMAIL_EST",
+    e."TELEFONO_EST",                                               
     e."ESTADO",
     e."DESCRIPCION_ESTADO" AS "DESCRIPCION",  -- Usar la columna correcta
     e."GENERO",
@@ -701,3 +703,55 @@ def asignar_estudiante_a_seccion(id_estudiante, id_seccion):
         if conn:
             conn.rollback()  # Revertir cambios en caso de error
         return False  # Retornamos False en caso de error
+
+def obtener_estudiantes_por_seccion(id_seccion):
+    """
+    Obtiene los estudiantes asignados a una sección específica.
+
+    Args:
+        id_seccion (int): ID de la sección para la cual se desea obtener los estudiantes.
+
+    Returns:
+        list: Lista de tuplas con los datos de los estudiantes 
+              (ID_EST, NOMBRE_EST, APELLIDO_EST, CEDULA).
+              Retorna una lista vacía si no hay estudiantes o si ocurre un error.
+    """
+    try:
+        # Convertir id_seccion a un entero estándar
+        id_seccion = int(id_seccion)
+
+        # Conectar a la base de datos
+        conn = conectar()
+        cursor = conn.cursor()
+
+        # Query para obtener estudiantes por sección
+        query = """
+        SELECT 
+            e."ID_EST",
+            e."NOMBRE_EST",
+            e."APELLIDO_EST",
+            e."CEDULA",
+            e."CEDULA_EST"
+        FROM 
+            public."ESTUDIANTES" e
+        JOIN 
+            public."ASIGNACION_EST" ae ON e."ID_EST" = ae."ID_EST"
+        WHERE 
+            ae."ID_SECCION" = %s
+        ORDER BY 
+            e."NOMBRE_EST";
+        """
+        # Ejecutar el query
+        cursor.execute(query, (id_seccion,))
+        estudiantes = cursor.fetchall()
+
+        # Cerrar cursor y conexión
+        cursor.close()
+        conn.close()
+
+        # Retornar los resultados
+        return estudiantes
+
+    except Exception as e:
+        print(f"Error al obtener estudiantes por sección: {e}")
+        return []

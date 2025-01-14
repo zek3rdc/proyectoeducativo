@@ -9,6 +9,8 @@ def renombrar_columnas(df):
         'APELLIDO_EST': 'Apellido Estudiante',
         'CI_EST': 'Cédula Identidad',
         'CEDULA_EST': 'Cédula Estudiantil',
+        "TELEFONO_EST": "Telefono Estudiante",
+        "EMAIL_EST": "Email Estudiante",
         'ESTADO': 'Estado',
         'DESCRIPCION': 'Descripción Estado',
         'GENERO': 'Género',
@@ -17,11 +19,12 @@ def renombrar_columnas(df):
         'NOMBRE_REPRE': 'Nombre Representante',
         'APELLIDO_REPRE': 'Apellido Representante',
         'CEDULA_REP': 'Cédula Representante',
-        'FECHA_REG': 'Fecha de Registro'
+        'FECHA_REG': 'Fecha de Registro',
+        'SECCION_ASIGNADA': 'Sección Asignada'
     })
 
 # Agregar un estudiante
-def agregar_estudiante(nombre, apellido, cedula, cedula_est, id_representante, genero, estado, descripcion_estado, fecha_reg=None):
+def agregar_estudiante(nombre, apellido, cedula, cedula_est, id_representante, genero, estado, descripcion_estado, fecha_nac, email, telefono):
     try:
         # Validar si la cédula ya existe
         if db_conector.cedula_existe(cedula):
@@ -31,19 +34,23 @@ def agregar_estudiante(nombre, apellido, cedula, cedula_est, id_representante, g
         if db_conector.matricula_existe(cedula_est):
             return f"La matrícula {cedula_est} ya está registrada en la base de datos."
 
-        # Usar fecha actual si no se proporciona
-        if not fecha_reg:
-            fecha_reg = datetime.datetime.now().date()
+        # Establecer la condición predeterminada como "NO" si está vacía
+        if not descripcion_estado:
+            descripcion_estado = "NO"
 
         # Insertar el estudiante
         query_agregar_estudiante = """
-            INSERT INTO "ESTUDIANTES" ("NOMBRE_EST", "APELLIDO_EST", "CEDULA", "CEDULA_EST", "GENERO", "ESTADO", "DESCRIPCION_ESTADO", "FECHA_REG")
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO "ESTUDIANTES" (
+                "NOMBRE_EST", "APELLIDO_EST", "CEDULA", "CEDULA_EST", 
+                "GENERO", "ESTADO", "CONDICION", "FECHA_NAC", 
+                "FECHA_REG", "EMAIL_EST", "TELEFONO_EST"
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s, %s)
             RETURNING "ID_EST"
         """
         resultado = db_conector.ejecutar_consulta_unica(
             query_agregar_estudiante,
-            (nombre, apellido, cedula, cedula_est, genero, estado, descripcion_estado, fecha_reg)
+            (nombre, apellido, cedula, cedula_est, genero, estado, descripcion_estado, fecha_nac, email, telefono)
         )
         id_nuevo_estudiante = resultado.get("ID_EST")
 
@@ -69,7 +76,7 @@ def agregar_estudiante(nombre, apellido, cedula, cedula_est, id_representante, g
 
 
 # Modificar un estudiante
-def modificar_estudiante(id_estudiante, nuevo_nombre, nuevo_apellido, nueva_cedula, nueva_cedula_est, nuevo_genero, nueva_condicion):
+def modificar_estudiante(id_estudiante, nuevo_nombre, nuevo_apellido, nueva_cedula, nueva_cedula_est, nuevo_genero, nueva_condicion,nuevo_email,nuevo_telefono):
     """
     Modifica los datos de un estudiante en la base de datos.
 
@@ -105,7 +112,9 @@ def modificar_estudiante(id_estudiante, nuevo_nombre, nuevo_apellido, nueva_cedu
                 "CEDULA_EST" = %s, 
                 "GENERO" = %s, 
                
-                "CONDICION" = %s
+                "CONDICION" = %s,
+                "EMAIL_EST" = %s,
+                "TELEFONO_EST" = %s
             WHERE 
                 "ID_EST" = %s
         """
@@ -114,7 +123,7 @@ def modificar_estudiante(id_estudiante, nuevo_nombre, nuevo_apellido, nueva_cedu
         db_conector.ejecutar_modificacion(
             query_modificar_estudiante,
             (nuevo_nombre, nuevo_apellido, nueva_cedula, nueva_cedula_est, 
-             genero_normalizado, nueva_condicion, id_estudiante)
+             genero_normalizado, nueva_condicion,nuevo_email,nuevo_telefono, id_estudiante)
         )
 
         return True  # Operación exitosa

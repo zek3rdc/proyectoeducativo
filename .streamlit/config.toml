@@ -7,3 +7,8 @@ wideMode = true
 # Habilitar "Run on Save"
 [server]
 runOnSave = true
+headless = true
+enableCORS = false
+enableWebsocketCompression = true
+address = "0.0.0.0"
+port = 8501  # Cambia si necesitas un puerto diferente

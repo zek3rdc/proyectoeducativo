@@ -42,27 +42,11 @@ def mostrar():
 #funcion para ver secciones
 def ver_secciones():
     """
-    Muestra una lista de secciones existentes con opciones de filtrado por grado.
-
-    La función obtiene las secciones de la base de datos y las muestra en un 
-    DataFrame de Streamlit. Incluye un sidebar que permite filtrar las secciones
-    por grado. Si no hay secciones disponibles, muestra un mensaje informativo.
-
-    Utiliza:
-    - `db_conector.obtener_secciones()` para obtener las secciones de la base de datos.
-    - `crear_dataframe_secciones()` para construir el DataFrame con los datos obtenidos.
-
-    Filtrado:
-    - Permite al usuario seleccionar un grado específico para filtrar las secciones.
-    - La opción "Todos" permite mostrar todas las secciones sin filtrado.
-
-    Interface:
-    - Subtítulo "Listado de Secciones".
-    - Sidebar para selección de grado.
-    - DataFrame mostrando las secciones disponibles.
+    Muestra una lista de secciones existentes con opciones de filtrado por grado
+    y permite ver los estudiantes asignados a cada sección.
     """
     st.subheader("Listado de Secciones")
-    
+
     # Obtener las secciones desde la base de datos
     secciones = db_conector.obtener_secciones()
     
@@ -73,33 +57,46 @@ def ver_secciones():
                 "ID": seccion[0],
                 "Nombre": seccion[1],
                 "Grado": seccion[2],
-                "Profesor": seccion[3]  # Solo acceder a seccion[3] ya que contiene nombre, apellido y cédula
+                "Profesor": seccion[3]
             }
             for seccion in secciones
         ]
         
-        # Definir los nombres de las columnas
+        # Crear DataFrame con las secciones
         columnas = ["ID", "Nombre", "Grado", "Profesor"]
-        
-        # Crear el DataFrame utilizando la función definida
         df_secciones = CrearTablas.crear_dataframe(secciones_data, columnas)
         
-        # Sidebar para filtrar por grado
-        st.sidebar.subheader("Filtrar Secciones")
+        # Sidebar para filtrar por grado y sección
+        st.sidebar.subheader("Filtrar")
         
-        # Obtener la lista de grados únicos
+        # Filtro por grado
         grados_unicos = df_secciones["Grado"].unique()
-        grados_unicos = ["Todos"] + list(grados_unicos)  # Agregar opción para mostrar todos los grados
-        
-        # Seleccionar grado en el sidebar
+        grados_unicos = ["Todos"] + list(grados_unicos)
         grado_seleccionado = st.sidebar.selectbox("Selecciona un grado", grados_unicos)
         
-        # Filtrar el DataFrame por el grado seleccionado
+        # Filtrar DataFrame por grado seleccionado
         if grado_seleccionado != "Todos":
             df_secciones = df_secciones[df_secciones["Grado"] == grado_seleccionado]
         
-        # Mostrar el DataFrame filtrado
-        st.dataframe(df_secciones)
+        # Filtro por sección
+        secciones_unicas = df_secciones["Nombre"].unique()
+        seccion_seleccionada = st.sidebar.selectbox("Selecciona una sección", ["Todas"] + list(secciones_unicas))
+        
+        # Mostrar estudiantes en la sección seleccionada
+        if seccion_seleccionada != "Todas":
+            id_seccion = df_secciones[df_secciones["Nombre"] == seccion_seleccionada]["ID"].values[0]
+            estudiantes = db_conector.obtener_estudiantes_por_seccion(id_seccion)
+            
+            if estudiantes:
+                # Mostrar lista de estudiantes
+                st.write(f"Estudiantes en la sección **{seccion_seleccionada}**:")
+                df_estudiantes = pd.DataFrame(estudiantes, columns=["ID", "Nombre", "Apellido", "Cédula","Cedula Estudiantil"])
+                st.dataframe(df_estudiantes, use_container_width=True)
+            else:
+                st.write(f"No hay estudiantes en la sección **{seccion_seleccionada}**.")
+        else:
+            # Mostrar todas las secciones sin filtrar
+            st.dataframe(df_secciones, use_container_width=True)
     else:
         st.write("No hay secciones disponibles.")
 
@@ -283,7 +280,7 @@ def monitorear_seccion():
         # Botón para volver a mostrar todas las secciones
         volver = st.button("Volver a todas las secciones")
         if volver:
-            st.experimental_rerun()  # Vuelve a ejecutar la función y muestra todas las secciones
+            st.rerun()  # Vuelve a ejecutar la función y muestra todas las secciones
         return
 
     # Selección de sección

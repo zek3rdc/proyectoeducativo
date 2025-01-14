@@ -6,6 +6,8 @@ from modulos.Profesores import profesores
 from modulos.Rendimiento import rendimiento
 from modulos.secciones import secciones
 from modulos.materias import materias
+from modulos.grados import grados
+from modulos.Representantes import representantes
 
 def main():
     st.title("Dashboard Principal")  # Título principal
@@ -41,7 +43,7 @@ def app():
     st.title("Sistema de Gestión Escolar")
 
     # Configurar barra lateral
-    menu = ["Dashboard", "Calificaciones", "Asistencias", "Personal", "Estudiantes","Materias", "Rendimiento", "Secciones"]
+    menu = ["Dashboard", "Calificaciones", "Asistencias", "Personal", "Estudiantes","Materias","Representantes", "Rendimiento", "Secciones","Grados"]
     opcion = st.sidebar.selectbox("Selecciona el módulo", menu)
 
     # Mostrar contenido según la opción seleccionada
@@ -55,12 +57,16 @@ def app():
         profesores.mostrar()
     elif opcion == "Estudiantes":
         estudiantes.mostrar()
+    elif opcion == "Representantes":
+        representantes.mostrar()
     elif opcion == "Rendimiento":
         rendimiento.mostrar()
     elif opcion == "Secciones":
         secciones.mostrar()
     elif opcion == "Materias":
         materias.mostrar()
+    elif opcion == "Grados":
+        grados.mostrar()
 
 # Llamar a la aplicación
 if __name__ == "__main__":

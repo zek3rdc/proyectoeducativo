@@ -91,6 +91,9 @@ def mostrar():
             genero_input_agregar = st.selectbox("Género", ["varon", "hembra"])
             estado_agregar = st.selectbox("Estado", ["Activo", "Inactivo"])
             condicion_agregar = st.text_input("Condición especial (opcional)")
+            fecha_nac = st.date_input("Fecha de Nacimiento")
+            email = st.text_input("Email")
+            telefono = st.text_input("Teléfono")
 
             # Selección de padre
             padre_seleccionado = st.selectbox(
@@ -106,6 +109,14 @@ def mostrar():
                 # Validar campos requeridos
                 errores = []
 
+                if not email.strip():
+                    errores.append("El email no puede estar vacío.")
+                if not telefono.strip():
+                    errores.append("El teléfono no puede estar vacío.")
+                if not telefono.isdigit():
+                    errores.append("El telefono debe ser numérico.")
+                if not fecha_nac:
+                    errores.append("La fecha de nacimiento no puede estar vacía.")       
                 # Validación de nombre y apellido
                 if not nombre_agregar.strip():
                     errores.append("El nombre no puede estar vacío.")
@@ -128,8 +139,6 @@ def mostrar():
                     # Asignar el ID del representante seleccionado
                     id_representante = padres_dict.get(padre_seleccionado) if padre_seleccionado else None
                     
-                    # Usar la fecha actual para el registro
-                    fecha_registro = datetime.datetime.now().date()  # Obtener la fecha actual
 
                     # Insertar estudiante en la base de datos
                     id_nuevo_estudiante = Componentes_estudiantes.agregar_estudiante(
@@ -141,7 +150,9 @@ def mostrar():
                         id_representante=id_representante,
                         estado=estado_agregar,
                         descripcion_estado=condicion_agregar.strip() or "N/A",
-                        fecha_reg=fecha_registro
+                        fecha_nac=fecha_nac,
+                        email=email.strip(),
+                        telefono=int(telefono.strip())
                     )
 
                     # Mostrar el mensaje de éxito o de error
@@ -150,7 +161,7 @@ def mostrar():
                     else:
                         st.success("Estudiante agregado exitosamente.")
                         time.sleep(2)  # Esperar 2 segundos antes de continuar
-                        st.experimental_rerun()  # Recargar la página para que desaparezca el mensaje
+                        st.rerun()  # Recargar la página para que desaparezca el mensaje
             
         
     # Pestaña de Modificar Estudiante
@@ -173,6 +184,8 @@ def mostrar():
                 apellido_modificar = st.text_input("Nuevo Apellido", value=est_data['APELLIDO_EST'])
                 cedula_modificar = st.text_input("Nueva Cédula", value=str(est_data['CI_EST']))
                 cedula_est_modificar = st.text_input("Nueva Cédula Estudiantil", value=str(est_data['CEDULA_EST']))
+                telefono_modificar = st.text_input("Nuevo Teléfono", value=str(est_data['TELEFONO_EST']))
+                email_modificar = st.text_input("Nuevo Email", value=est_data['EMAIL_EST'])
                 # Normalizar el valor de 'GENERO' a minúsculas antes de buscar en la lista
                 genero_modificar = st.selectbox(
                     "Nuevo Género", 
@@ -189,6 +202,13 @@ def mostrar():
                 if submitted:
                     # Validar campos requeridos
                     errores = []
+                    
+                    if not telefono_modificar.strip():
+                        errores.append("El teléfono no puede estar vacío.")
+                    if not telefono_modificar.isdigit():
+                        errores.append("El telefono debe ser numérico.")
+                    if not email_modificar.strip():
+                        errores.append("El email no puede estar vacío.")
 
                     # Validación de nombre y apellido
                     if not nombre_modificar.strip():
@@ -226,14 +246,16 @@ def mostrar():
                             nueva_cedula_est=int(cedula_est_modificar.strip()),
                             nuevo_genero=genero_modificar,
                       
-                            nueva_condicion=condicion_modificar.strip() or "N/A"
+                            nueva_condicion=condicion_modificar.strip() or "N/A",
+                            nuevo_telefono=int(telefono_modificar.strip()),
+                            nuevo_email=email_modificar.strip()
                         )
                         
                         # Mostrar mensaje según el resultado
                         if exito:
                             st.success("Estudiante modificado exitosamente.")
                             time.sleep(2)  # Esperar 2 segundos antes de continuar
-                            st.experimental_rerun()  # Recargar la página para reflejar los cambios
+                            st.rerun()  # Recargar la página para reflejar los cambios
                         else:
                             st.error("Ocurrió un error al modificar el estudiante. Por favor, verifica los datos e intenta nuevamente.")
         else:
@@ -268,6 +290,7 @@ def mostrar():
                     # Llamada a la función en `Componentes_estudiantes` para cambiar el estado y registrar el cambio
                     Componentes_estudiantes.cambiar_estado_estudiante(est_id, nuevo_estado, descripcion)
                 st.success("Estado de estudiantes actualizado correctamente.")
+                st.rerun() 
         else:
             st.warning("Seleccione al menos un estudiante y complete los campos para cambiar el estado.")
 
