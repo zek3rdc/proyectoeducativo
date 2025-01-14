@@ -19,14 +19,62 @@ cookie:
 credentials:
   usernames:
     Admin:
+      username: admin  # Agregado el campo 'username'
       email: admin@gmail.com
       failed_login_attempts: 0
       logged_in: false
       name: Administrador
-      password: admin123
+      password: admin123  # Contraseña sin hash (puedes agregar un hash si es necesario)
+      role: admin
+    user1:
+      username: user1
+      email: admin@gmail.com
+      failed_login_attempts: 0
+      logged_in: false
+      name: Administrador
+      password: hashed_password
+      role: estudiante  # Rol asignado
+    user2:
+      username: user2
+      email: admin@gmail.com
+      failed_login_attempts: 0
+      logged_in: false
+      name: Administrador
+      password: hashed_password
+      role: profesor
+  cookie:
+    name: some_cookie_name
+    key: some_secret_key
+    expiry_days: 30
+
+roles:
+  admin:
+    - Dashboard
+    - Calificaciones
+    - Asistencias
+    - Personal
+    - Estudiantes
+    - Materias
+    - Representantes
+    - Rendimiento
+    - Secciones
+    - Grados
+  profesor:
+    - Dashboard
+    - Calificaciones
+    - Asistencias
+    - Estudiantes
+    - Representantes
+    - Rendimiento
+  estudiante:
+    - Dashboard
+    - Calificaciones
+    - Asistencias
+    - Representantes
 pre-authorized:
   emails:
     - melsby@gmail.com
+
 table_color: Purples
 
 #----------------------------------------------------------------------------

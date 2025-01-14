@@ -9,65 +9,62 @@ from modulos.materias import materias
 from modulos.grados import grados
 from modulos.Representantes import representantes
 
-def main():
-    st.title("Dashboard Principal")  # Título principal
+def main(user_permissions):
+    st.title("Dashboard Principal")
 
-    # Aplicar estilos más discretos para tabs
     st.markdown("""
         <style>
         .stTabs [data-baseweb="tab"] {
-            font-size: 16px; /* Tamaño ajustado para texto */
-            padding: 8px 16px; /* Espaciado interno */
+            font-size: 16px;
+            padding: 8px 16px;
         }
         .stTabs [data-baseweb="tab"]:hover {
-            background-color: #f0f0f0; /* Color de hover */
+            background-color: #f0f0f0;
         }
         </style>
     """, unsafe_allow_html=True)
 
-    # Configuración de pestañas
-    tab_names = ["Estudiantes", "Profesores", "Calificaciones"]
-    tabs = st.tabs(tab_names)
+    tab_names = [tab for tab in ["Estudiantes", "Profesores", "Calificaciones"] if tab in user_permissions]
+    if tab_names:
+        tabs = st.tabs(tab_names)
 
-    with tabs[0]:  # Pestaña Estudiantes
-        estudiantes.dashboard()
+        for i, tab_name in enumerate(tab_names):
+            with tabs[i]:
+                if tab_name == "Estudiantes":
+                    estudiantes.dashboard()
+                elif tab_name == "Profesores":
+                    profesores.dashboard()
+                elif tab_name == "Calificaciones":
+                    calificaciones.dashboard()
 
-    with tabs[1]:  # Pestaña Profesores
-        profesores.dashboard()
-
-    with tabs[2]:  # Pestaña Calificaciones
-        calificaciones.dashboard()
-
-def app():
-    # Título general del aplicativo
+def app(user_permissions):
     st.title("Sistema de Gestión Escolar")
 
-    # Configurar barra lateral
-    menu = ["Dashboard", "Calificaciones", "Asistencias", "Personal", "Estudiantes","Materias","Representantes", "Rendimiento", "Secciones","Grados"]
-    opcion = st.sidebar.selectbox("Selecciona el módulo", menu)
+    menu = [option for option in ["Dashboard", "Calificaciones", "Asistencias", "Personal", "Estudiantes", "Materias", "Representantes", "Rendimiento", "Secciones", "Grados"] if option in user_permissions]
+    
+    if menu:
+        opcion = st.sidebar.selectbox("Selecciona el módulo", menu)
 
-    # Mostrar contenido según la opción seleccionada
-    if opcion == "Dashboard":
-        main()
-    elif opcion == "Calificaciones":
-        calificaciones.mostrar()
-    elif opcion == "Asistencias":
-        asistencias.mostrar()
-    elif opcion == "Personal":
-        profesores.mostrar()
-    elif opcion == "Estudiantes":
-        estudiantes.mostrar()
-    elif opcion == "Representantes":
-        representantes.mostrar()
-    elif opcion == "Rendimiento":
-        rendimiento.mostrar()
-    elif opcion == "Secciones":
-        secciones.mostrar()
-    elif opcion == "Materias":
-        materias.mostrar()
-    elif opcion == "Grados":
-        grados.mostrar()
+        if opcion == "Dashboard":
+            main(user_permissions)
+        elif opcion == "Calificaciones":
+            calificaciones.mostrar()
+        elif opcion == "Asistencias":
+            asistencias.mostrar()
+        elif opcion == "Personal":
+            profesores.mostrar()
+        elif opcion == "Estudiantes":
+            estudiantes.mostrar()
+        elif opcion == "Representantes":
+            representantes.mostrar()
+        elif opcion == "Rendimiento":
+            rendimiento.mostrar()
+        elif opcion == "Secciones":
+            secciones.mostrar()
+        elif opcion == "Materias":
+            materias.mostrar()
+        elif opcion == "Grados":
+            grados.mostrar()
+    else:
+        st.warning("No tienes permisos para acceder a ningún módulo.")
 
-# Llamar a la aplicación
-if __name__ == "__main__":
-    app()
