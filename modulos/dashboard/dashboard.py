@@ -8,6 +8,7 @@ from modulos.secciones import secciones
 from modulos.materias import materias
 from modulos.grados import grados
 from modulos.Representantes import representantes
+from modulos.parametros_generales import parametros_generales
 
 def main(user_permissions):
     st.title("Dashboard Principal")
@@ -37,11 +38,20 @@ def main(user_permissions):
                 elif tab_name == "Calificaciones":
                     calificaciones.dashboard()
 
+def generar_menu(user_permissions):
+    return [
+        option for option in [
+            "Dashboard", "Calificaciones", "Asistencias", "Personal", 
+            "Estudiantes", "Materias", "Representantes", "Rendimiento", 
+            "Secciones", "Grados","Parametros Generales"
+        ] if option in user_permissions
+    ]
+
+
 def app(user_permissions):
     st.title("Sistema de Gestión Escolar")
 
-    menu = [option for option in ["Dashboard", "Calificaciones", "Asistencias", "Personal", "Estudiantes", "Materias", "Representantes", "Rendimiento", "Secciones", "Grados"] if option in user_permissions]
-    
+    menu = generar_menu(user_permissions)
     if menu:
         opcion = st.sidebar.selectbox("Selecciona el módulo", menu)
 
@@ -65,6 +75,8 @@ def app(user_permissions):
             materias.mostrar()
         elif opcion == "Grados":
             grados.mostrar()
+        elif opcion == "Parametros Generales":
+            parametros_generales.mostrar()
     else:
         st.warning("No tienes permisos para acceder a ningún módulo.")
 

@@ -6,6 +6,7 @@ from modulos.main_Componentes import componentes_secciones
 from modulos.main_Componentes import grafico_lineal
 from modulos import CrearTablas
 from streamlit_extras.metric_cards import style_metric_cards
+import time 
 
 
 def mostrar():
@@ -280,6 +281,7 @@ def monitorear_seccion():
         # Botón para volver a mostrar todas las secciones
         volver = st.button("Volver a todas las secciones")
         if volver:
+            time.sleep(2) 
             st.rerun()  # Vuelve a ejecutar la función y muestra todas las secciones
         return
 

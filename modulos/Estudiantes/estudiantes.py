@@ -149,7 +149,7 @@ def mostrar():
                         genero=genero_input_agregar,
                         id_representante=id_representante,
                         estado=estado_agregar,
-                        descripcion_estado=condicion_agregar.strip() or "N/A",
+                        condicion=condicion_agregar.strip() or "N/A",
                         fecha_nac=fecha_nac,
                         email=email.strip(),
                         telefono=int(telefono.strip())
@@ -329,12 +329,11 @@ def mostrar():
         # Cargar estudiantes y secciones
 
     # Mostrar la interfaz en el tab5
-# Mostrar la interfaz en el tab5
     with tab5:
         st.subheader("Asignar Sección a Estudiante")
         secciones = db_conector.obtener_secciones()  # Lista de secciones
         df_secciones = pd.DataFrame(secciones, columns=["ID_SECCION", "NOMBRE_SECCION", "GRADO", "PROFESOR"])
-        
+
         # Verificar si df_estudiantes es None o está vacío
         if df_estudiantes is None or df_estudiantes.empty:
             st.warning("No hay estudiantes disponibles en la base de datos.")
@@ -350,26 +349,41 @@ def mostrar():
                 st.subheader("Secciones")
                 st.dataframe(df_secciones)
 
-            # Crear los selectores para seleccionar un estudiante y una sección
-            selected_estudiante = st.selectbox("Selecciona un estudiante", df_estudiantes['Nombre Estudiante'] + ' ' + df_estudiantes['Apellido Estudiante'])
-            selected_seccion = st.selectbox("Selecciona una sección", df_secciones['NOMBRE_SECCION'])
+            # Crear los selectores para seleccionar estudiantes y secciones
+            selected_estudiantes = st.multiselect("Selecciona uno o más estudiantes", df_estudiantes['Nombre Estudiante'] + ' ' + df_estudiantes['Apellido Estudiante'])
+            selected_secciones = st.multiselect("Selecciona una o más secciones", df_secciones['NOMBRE_SECCION'])
 
-            # Obtener los IDs de los seleccionados
-            id_estudiante = df_estudiantes[df_estudiantes['Nombre Estudiante'] + ' ' + df_estudiantes['Apellido Estudiante'] == selected_estudiante].iloc[0]['ID Estudiante']
-            id_seccion = df_secciones[df_secciones['NOMBRE_SECCION'] == selected_seccion].iloc[0]['ID_SECCION']
+            # Verificar si se seleccionaron estudiantes y secciones
+            if not selected_estudiantes or not selected_secciones:
+                st.warning("Selecciona al menos un estudiante y una sección.")
+            else:
+                # Crear una nueva columna 'Nombre Completo' en df_estudiantes
+                df_estudiantes['Nombre Completo'] = df_estudiantes['Nombre Estudiante'] + ' ' + df_estudiantes['Apellido Estudiante']
 
-            # Botón para asignar la sección al estudiante
-            if st.button("Asignar Sección"):
-                # Intentamos asignar la sección
-                resultado = db_conector.asignar_estudiante_a_seccion(id_estudiante, id_seccion)
-                
-                if resultado:
-                    st.success(f"Sección '{selected_seccion}' asignada exitosamente al estudiante '{selected_estudiante}'.")
+                # Obtener los IDs de los estudiantes seleccionados
+                ids_estudiantes = df_estudiantes[df_estudiantes['Nombre Completo'].isin(selected_estudiantes)]['ID Estudiante']
+
+                # Filtrar las secciones que coinciden con las selecciones
+                filtered_secciones = df_secciones[df_secciones['NOMBRE_SECCION'].isin(selected_secciones)]
+
+                # Verificar si el DataFrame filtrado tiene filas
+                if not filtered_secciones.empty:
+                    ids_secciones = filtered_secciones['ID_SECCION']
                 else:
-                    st.error(f"El estudiante '{selected_estudiante}' ya está asignado a la sección '{selected_seccion}'.")
+                    st.error(f"No se encontraron las secciones seleccionadas.")
+                    ids_secciones = []
 
+                # Botón para asignar las secciones a los estudiantes seleccionados
+                if st.button("Asignar Secciones"):
+                    if not ids_secciones.empty:  # Cambiado para verificar si ids_secciones tiene elementos
+                        for id_estudiante in ids_estudiantes:
+                            for id_seccion in ids_secciones:
+                                # Intentamos asignar la sección
+                                resultado = db_conector.asignar_estudiante_a_seccion(id_estudiante, id_seccion)
 
-
-if "initialized" not in st.session_state:
-    st.session_state.initialized = True
-    mostrar()
+                                if resultado:
+                                    st.success(f"Sección '{selected_secciones}' asignada exitosamente al estudiante '{selected_estudiantes}'.")
+                                else:
+                                    st.error(f"El estudiante '{selected_estudiantes}' ya está asignado a la sección '{selected_secciones}'.")
+                    else:
+                        st.error("No se pudo asignar las secciones.")

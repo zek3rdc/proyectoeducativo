@@ -2,6 +2,7 @@ import streamlit as st
 from modulos.main_Componentes import componente_grados
 from modulos import db_conector
 import pandas as pd
+import time
 
 def mostrar():
     """
@@ -28,6 +29,7 @@ def mostrar():
         if st.button("Agregar Grado"):
             if componente_grados.agregar_grado(nombre_grado):
                 st.success("Grado agregado exitosamente.")
+                time.sleep(2) 
                 st.rerun()
 
     # Modificar un grado existente
@@ -43,6 +45,7 @@ def mostrar():
             if st.button("Modificar Grado"):
                 if componente_grados.modificar_grado(grado_seleccionado[0], nuevo_nombre):
                     st.success("Grado modificado exitosamente.")
+                    time.sleep(2) 
                     st.rerun()
         else:
             st.info("No hay grados registrados.")
@@ -60,7 +63,8 @@ def mostrar():
                 for grado in grados_a_eliminar:
                     if componente_grados.eliminar_grado(grado[0]):
                         st.success(f"Grado {grado[1]} eliminado exitosamente.")
-                st.rerun()
+                        time.sleep(2) 
+                        st.rerun()
         else:
             st.info("No hay grados registrados.")
 
@@ -103,13 +107,15 @@ def mostrar():
                     for seccion in secciones_seleccionadas:
                         if componente_grados.asignar_grado_a_seccion(grado[0], seccion[0]):
                             st.success(f"Grado {grado[1]} asignado exitosamente a la sección {seccion[1]}.")
-                st.rerun()
+                            time.sleep(2) 
+                            st.rerun()
         with col4:
             if st.button("Quitar Grado(s) de Sección(es)"):
                 for seccion in secciones_seleccionadas:
                     if componente_grados.quitar_grado_de_seccion(seccion[0]):
                         st.success(f"Grado quitado exitosamente de la sección {seccion[1]}.")
-                st.rerun()
+                        time.sleep(2) 
+                        st.rerun()
 
     # Mostrar grados y secciones
     with st.expander("Ver Grados y Secciones"):

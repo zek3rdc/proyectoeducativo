@@ -18,9 +18,10 @@ def agregar_profesor(nombre, apellido, cedula, email, telefono, direccion, rol):
             "EMAIL_PROF", 
             "TELEFONO_PROF", 
             "DIRECCION_PROF", 
-            "ID_ROL"
+            "ID_ROL",
+            "FECHA_REG_PROF"
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s);
+        VALUES (%s, %s, %s, %s, %s, %s, %s,NOW());
     '''
     db_conector.ejecutar_query(query, (nombre, apellido, cedula, email, telefono, direccion, rol_id))
 

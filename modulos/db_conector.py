@@ -19,7 +19,6 @@ def conectar():
 
 
 # Función para cerrar la conexión
-import psycopg2
 
 def cerrar_conexion(connection):
     if connection is not None:
@@ -534,17 +533,22 @@ def listar_profesores():
     Obtiene la lista de profesores desde la base de datos, incluyendo aquellos sin rol asignado.
     """
     query = '''
-        SELECT 
-            p."ID_PROF" AS id_profesor,
-            p."NOMBRE_PROF" AS nombre,
-            p."APELLIDO_PROF" AS apellido,
-            p."CEDULA_PROF" AS cedula,
-            p."TELEFONO_PROF" AS telefono,
-            p."DIRECCION_PROF" AS direccion,
-            p."EMAIL_PROF" AS email,
-            COALESCE(r."ROL", 'Sin Rol') AS rol  -- Si no tiene rol, mostramos 'Sin Rol'
-        FROM public."PROFESORES" p
-        LEFT JOIN public."ROLES" r ON p."ID_ROL" = r."ID_ROL";
+SELECT 
+    p."ID_PROF" AS id_profesor,
+    p."NOMBRE_PROF" AS nombre,
+    p."APELLIDO_PROF" AS apellido,
+    p."CEDULA_PROF" AS cedula,
+    p."TELEFONO_PROF" AS telefono,
+    p."DIRECCION_PROF" AS direccion,
+    p."EMAIL_PROF" AS email,
+    COALESCE(r."ROL", 'Sin Rol') AS rol  -- Si no tiene rol, mostramos 'Sin Rol'
+FROM 
+    public."PROFESORES" p
+LEFT JOIN 
+    public."ROLES" r 
+ON 
+    p."ID_ROL" = r."ID_ROL";
+
     '''
     return ejecutar_query(query)
 
@@ -755,3 +759,27 @@ def obtener_estudiantes_por_seccion(id_seccion):
     except Exception as e:
         print(f"Error al obtener estudiantes por sección: {e}")
         return []
+
+
+def insertar_id_acceso_en_base_de_datos(id_profesor, id_acceso):
+    """
+    Inserta el ID_ACCESO generado en la base de datos para el profesor.
+    """
+    try:
+        connection = conectar()  # Función para conectar a la base de datos
+        if connection:
+            with connection.cursor() as cursor:
+                # Actualizar la tabla "PROFESORES" con el nuevo ID_ACCESO
+                query = """
+                    UPDATE public."PROFESORES"
+                    SET "ID_ACCESO" = %s
+                    WHERE "ID_PROF" = %s
+                """
+                cursor.execute(query, (id_acceso, id_profesor))
+                connection.commit()
+            return "ID de acceso actualizado exitosamente en la base de datos."
+        else:
+            return "Error al conectar a la base de datos."
+    except Exception as e:
+        return f"Error al actualizar ID de acceso en la base de datos: {e}"
+

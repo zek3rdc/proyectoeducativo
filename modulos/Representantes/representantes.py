@@ -2,7 +2,7 @@ import streamlit as st
 from modulos.Utilidades.FuncionesGenerales import subHeader
 from modulos.main_Componentes import componentes_representantes
 import pandas as pd
-
+import time
 def mostrar():
     st.header("Módulo de Representantes")
     st.write("Gestiona la información de los representantes.")
@@ -59,6 +59,7 @@ def mostrar():
                 
                 if "ID_REP" in resultado:
                     st.success(f"Representante agregado exitosamente con ID: {resultado['ID_REP']}")
+                    time.sleep(2) 
                     st.rerun()
                 else:
                     st.error(f"Error: {resultado.get('error', 'Ocurrió un error inesperado.')}")
@@ -87,6 +88,7 @@ def mostrar():
                             tel = tel.strip()
                             if tel:
                                 componentes_representantes.agregar_telefono(id_editar, tel)
+                        time.sleep(2) 
                         st.rerun()
                         st.success("Representante actualizado exitosamente.")
                     else:
