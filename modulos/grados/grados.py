@@ -17,14 +17,13 @@ def mostrar():
 
     # Convertir datos a DataFrames para visualización
     df_grados = pd.DataFrame(grados, columns=["ID_GRADO", "NOMBRE_GRADO"])
-    df_secciones = pd.DataFrame(secciones, columns=["ID_SECCION", "NOMBRE_SECCION", "ID_GRADO", "NOMBRE_GRADO"])
+    df_secciones = pd.DataFrame(secciones, columns=["ID_SECCION", "NOMBRE_SECCION", "NOMBRE_GRADO", "PROFESOR_ENCARGADO"])
 
-    # Mostrar los datos actuales
-    st.write("Lista de Grados:")
-    st.dataframe(df_grados, use_container_width=True)
+    # Crear los tabs
+    tabs = st.tabs(["Agregar Grado", "Modificar Grado", "Eliminar Grado", "Asignar o Quitar Grado a Sección", "Ver Grados y Secciones"])
 
     # Agregar un nuevo grado
-    with st.expander("Agregar Grado"):
+    with tabs[0]:
         nombre_grado = st.text_input("Nombre del nuevo grado")
         if st.button("Agregar Grado"):
             if componente_grados.agregar_grado(nombre_grado):
@@ -33,7 +32,7 @@ def mostrar():
                 st.rerun()
 
     # Modificar un grado existente
-    with st.expander("Modificar Grado"):
+    with tabs[1]:
         if not df_grados.empty:
             grado_seleccionado = st.selectbox(
                 "Selecciona un grado para modificar",
@@ -51,7 +50,7 @@ def mostrar():
             st.info("No hay grados registrados.")
 
     # Eliminar grados (Multiselección)
-    with st.expander("Eliminar Grado"):
+    with tabs[2]:
         if not df_grados.empty:
             grados_a_eliminar = st.multiselect(
                 "Selecciona los grados para eliminar",
@@ -69,7 +68,7 @@ def mostrar():
             st.info("No hay grados registrados.")
 
     # Asignar o quitar grado a sección (Multiselección)
-    with st.expander("Asignar o Quitar Grado a Sección"):
+    with tabs[3]:
         col1, col2 = st.columns(2)
 
         with col1:
@@ -80,9 +79,9 @@ def mostrar():
             st.subheader("Secciones")
             filtro = st.radio("Filtrar secciones por:", ["Todas", "Con Grado", "Sin Grado"], index=0)
             if filtro == "Con Grado":
-                df_secciones_filtradas = df_secciones[df_secciones["ID_GRADO"].notna()]
+                df_secciones_filtradas = df_secciones[df_secciones["NOMBRE_GRADO"].notna()]
             elif filtro == "Sin Grado":
-                df_secciones_filtradas = df_secciones[df_secciones["ID_GRADO"].isna()]
+                df_secciones_filtradas = df_secciones[df_secciones["NOMBRE_GRADO"].isna()]
             else:
                 df_secciones_filtradas = df_secciones
 
@@ -118,7 +117,7 @@ def mostrar():
                         st.rerun()
 
     # Mostrar grados y secciones
-    with st.expander("Ver Grados y Secciones"):
+    with tabs[4]:
         st.subheader("Grados")
         st.dataframe(df_grados, use_container_width=True)
 

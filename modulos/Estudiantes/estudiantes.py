@@ -328,62 +328,173 @@ def mostrar():
 
         # Cargar estudiantes y secciones
 
-    # Mostrar la interfaz en el tab5
+        # Mostrar la interfaz en el tab5
     with tab5:
-        st.subheader("Asignar Sección a Estudiante")
+        st.subheader("Asignar, Eliminar o Transferir Estudiantes entre Secciones")
         secciones = db_conector.obtener_secciones()  # Lista de secciones
         df_secciones = pd.DataFrame(secciones, columns=["ID_SECCION", "NOMBRE_SECCION", "GRADO", "PROFESOR"])
 
-        # Verificar si df_estudiantes es None o está vacío
         if df_estudiantes is None or df_estudiantes.empty:
             st.warning("No hay estudiantes disponibles en la base de datos.")
         else:
-            # Mostrar las tablas de estudiantes y secciones
+            # Reemplazar valores nulos con "Sin asignar" en la columna 'Sección Asignada'
+            df_estudiantes['Sección Asignada'] = df_estudiantes['Sección Asignada'].fillna("Sin asignar")
+            estudiantes_sin_seccion = df_estudiantes[df_estudiantes['Sección Asignada'] == "Sin asignar"]
+            estudiantes_con_seccion = df_estudiantes[df_estudiantes['Sección Asignada'] != "Sin asignar"]
+
             col1, col2 = st.columns(2)
 
             with col1:
-                st.subheader("Estudiantes")
-                st.dataframe(df_estudiantes)
+                st.subheader("Estudiantes Sin Sección Asignada")
+                st.dataframe(estudiantes_sin_seccion)
 
             with col2:
                 st.subheader("Secciones")
                 st.dataframe(df_secciones)
 
-            # Crear los selectores para seleccionar estudiantes y secciones
-            selected_estudiantes = st.multiselect("Selecciona uno o más estudiantes", df_estudiantes['Nombre Estudiante'] + ' ' + df_estudiantes['Apellido Estudiante'])
-            selected_secciones = st.multiselect("Selecciona una o más secciones", df_secciones['NOMBRE_SECCION'])
+            st.markdown("---")
+            st.subheader("Opciones de Gestión de Secciones")
 
-            # Verificar si se seleccionaron estudiantes y secciones
-            if not selected_estudiantes or not selected_secciones:
-                st.warning("Selecciona al menos un estudiante y una sección.")
-            else:
-                # Crear una nueva columna 'Nombre Completo' en df_estudiantes
-                df_estudiantes['Nombre Completo'] = df_estudiantes['Nombre Estudiante'] + ' ' + df_estudiantes['Apellido Estudiante']
+                # Asignar estudiante a una sección
+            st.markdown("### Asignar Estudiante a una Sección")
+            selected_estudiante = st.multiselect(
+                "Selecciona uno o más estudiantes",
+                estudiantes_sin_seccion['Nombre Estudiante'] + ' ' + estudiantes_sin_seccion['Apellido Estudiante']
+            )
+            selected_seccion = st.selectbox(
+                "Selecciona una sección",
+                options=df_secciones['NOMBRE_SECCION'],
+                key="asignar_seccion"
+            )
 
-                # Obtener los IDs de los estudiantes seleccionados
-                ids_estudiantes = df_estudiantes[df_estudiantes['Nombre Completo'].isin(selected_estudiantes)]['ID Estudiante']
+            if st.button("Asignar Sección"):
+                if selected_estudiante:
+                    # Crear la columna 'Nombre Completo' para facilitar la comparación
+                    estudiantes_sin_seccion['Nombre Completo'] = (
+                        estudiantes_sin_seccion['Nombre Estudiante'] + ' ' + estudiantes_sin_seccion['Apellido Estudiante']
+                    )
 
-                # Filtrar las secciones que coinciden con las selecciones
-                filtered_secciones = df_secciones[df_secciones['NOMBRE_SECCION'].isin(selected_secciones)]
+                    # Filtrar los estudiantes seleccionados
+                    estudiantes_filtrados = estudiantes_sin_seccion[
+                        estudiantes_sin_seccion['Nombre Completo'].isin(selected_estudiante)
+                    ]
 
-                # Verificar si el DataFrame filtrado tiene filas
-                if not filtered_secciones.empty:
-                    ids_secciones = filtered_secciones['ID_SECCION']
-                else:
-                    st.error(f"No se encontraron las secciones seleccionadas.")
-                    ids_secciones = []
+                    if not estudiantes_filtrados.empty:
+                        # Obtener el ID de la sección seleccionada
+                        id_seccion = df_secciones[df_secciones['NOMBRE_SECCION'] == selected_seccion]['ID_SECCION'].iloc[0]
 
-                # Botón para asignar las secciones a los estudiantes seleccionados
-                if st.button("Asignar Secciones"):
-                    if not ids_secciones.empty:  # Cambiado para verificar si ids_secciones tiene elementos
-                        for id_estudiante in ids_estudiantes:
-                            for id_seccion in ids_secciones:
-                                # Intentamos asignar la sección
-                                resultado = db_conector.asignar_estudiante_a_seccion(id_estudiante, id_seccion)
+                        # Iterar sobre los estudiantes seleccionados
+                        for _, estudiante in estudiantes_filtrados.iterrows():
+                            id_estudiante = int(estudiante['ID Estudiante'])
 
-                                if resultado:
-                                    st.success(f"Sección '{selected_secciones}' asignada exitosamente al estudiante '{selected_estudiantes}'.")
-                                else:
-                                    st.error(f"El estudiante '{selected_estudiantes}' ya está asignado a la sección '{selected_secciones}'.")
+                            # Intentar asignar el estudiante a la sección
+                            resultado = db_conector.asignar_estudiante_a_seccion(id_estudiante, id_seccion)
+
+                            if resultado:
+                                st.success(f"Sección '{selected_seccion}' asignada exitosamente al estudiante '{estudiante['Nombre Completo']}'.")
+                            else:
+                                st.error(f"El estudiante '{estudiante['Nombre Completo']}' ya está asignado a la sección '{selected_seccion}'.")
+                        
+                        # Rehacer la carga de la página después de la acción
+                        time.sleep(2)
+                        st.rerun()
                     else:
-                        st.error("No se pudo asignar las secciones.")
+                        st.warning("No se encontraron estudiantes seleccionados.")
+                else:
+                    st.warning("Selecciona al menos un estudiante para asignar.")
+
+            # Eliminar estudiante de una sección
+            st.markdown("### Eliminar Estudiante de una Sección")
+            selected_estudiante_con_seccion = st.multiselect(
+                "Selecciona un estudiante con sección asignada",
+                estudiantes_con_seccion['Nombre Estudiante'] + ' ' + estudiantes_con_seccion['Apellido Estudiante'],
+                key="eliminar_estudiante"
+            )
+
+            if st.button("Eliminar Estudiante de la Sección"):
+                if selected_estudiante_con_seccion:
+                    # Crear la columna 'Nombre Completo' para facilitar la comparación
+                    estudiantes_con_seccion['Nombre Completo'] = (
+                        estudiantes_con_seccion['Nombre Estudiante'] + ' ' + estudiantes_con_seccion['Apellido Estudiante']
+                    )
+
+                    # Filtrar los estudiantes seleccionados
+                    estudiantes_filtrados = estudiantes_con_seccion[
+                        estudiantes_con_seccion['Nombre Completo'].isin(selected_estudiante_con_seccion)
+                    ]
+
+                    if not estudiantes_filtrados.empty:
+                        # Iterar sobre los estudiantes seleccionados
+                        for _, estudiante in estudiantes_filtrados.iterrows():
+                            id_estudiante = int(estudiante['ID Estudiante'])
+
+                            # Intentar eliminar al estudiante de la sección
+                            resultado = db_conector.eliminar_estudiante_de_seccion(id_estudiante)
+
+                            if resultado:
+                                st.success(f"Estudiante '{estudiante['Nombre Completo']}' eliminado de su sección.")
+                            else:
+                                st.error(f"No se pudo eliminar al estudiante '{estudiante['Nombre Completo']}' de su sección.")
+                        
+                        # Rehacer la carga de la página después de la acción
+                        time.sleep(2)
+                        st.rerun()
+                    else:
+                        st.warning("No se encontraron estudiantes seleccionados.")
+                else:
+                    st.warning("Selecciona al menos un estudiante para eliminar.")
+
+
+            # Transferir estudiante a otra sección
+            st.markdown("### Transferir Estudiante a Otra Sección")
+            selected_estudiante_con_seccion = st.multiselect(
+                "Selecciona un estudiante con sección asignada",
+                estudiantes_con_seccion['Nombre Estudiante'] + ' ' + estudiantes_con_seccion['Apellido Estudiante'],
+                key="transferir_estudiante"
+            )
+            selected_seccion_nueva = st.selectbox(
+                "Selecciona una nueva sección",
+                options=df_secciones['NOMBRE_SECCION'],
+                key="transferir_seccion"
+            )
+
+            if st.button("Transferir Estudiante"):
+                if selected_estudiante_con_seccion:
+                    # Crear la columna 'Nombre Completo' para facilitar la comparación
+                    estudiantes_con_seccion['Nombre Completo'] = (
+                        estudiantes_con_seccion['Nombre Estudiante'] + ' ' + estudiantes_con_seccion['Apellido Estudiante']
+                    )
+
+                    # Filtrar el estudiante seleccionado
+                    estudiante_seleccionado = estudiantes_con_seccion[
+                        estudiantes_con_seccion['Nombre Completo'].isin(selected_estudiante_con_seccion)
+                    ].iloc[0]
+
+                    id_estudiante = int(estudiante_seleccionado['ID Estudiante'])
+                    id_seccion_nueva = df_secciones[df_secciones['NOMBRE_SECCION'] == selected_seccion_nueva]['ID_SECCION'].iloc[0]
+
+                    # Intentar eliminar al estudiante de la sección actual
+                    resultado_eliminacion = db_conector.eliminar_estudiante_de_seccion(id_estudiante)
+                    
+                    if resultado_eliminacion:
+                        # Si la eliminación fue exitosa, proceder con la asignación a la nueva sección
+                        resultado_asignacion = db_conector.asignar_estudiante_a_seccion(id_estudiante, id_seccion_nueva)
+
+                        if resultado_asignacion:
+                            st.success(f"Estudiante '{estudiante_seleccionado['Nombre Completo']}' transferido exitosamente a la sección '{selected_seccion_nueva}'.")
+                            time.sleep(2)
+                            st.rerun()
+                        else:
+                            st.error(f"No se pudo asignar al estudiante '{estudiante_seleccionado['Nombre Completo']}' a la sección '{selected_seccion_nueva}'.")
+                    else:
+                        st.error(f"No se pudo eliminar al estudiante '{estudiante_seleccionado['Nombre Completo']}' de su sección actual.")
+                else:
+                    st.warning("Selecciona un estudiante para transferir.")
+
+            # Expander para mostrar datos adicionales
+            with st.expander("Ver datos adicionales"):
+                st.markdown("#### Secciones Disponibles")
+                st.dataframe(df_secciones)
+
+                st.markdown("#### Estudiantes con Sección Asignada")
+                st.dataframe(estudiantes_con_seccion)

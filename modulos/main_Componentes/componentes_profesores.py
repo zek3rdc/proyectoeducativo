@@ -1,6 +1,6 @@
 from modulos import db_conector
 
-def agregar_profesor(nombre, apellido, cedula, email, telefono, direccion, rol):
+def agregar_profesor(nombre, apellido, fecha_nac,cedula, email, telefono, direccion, codificacion,categoria,estudios,fecha_job, rol):
     """
     Agrega un nuevo profesor a la base de datos.
     """
@@ -13,20 +13,25 @@ def agregar_profesor(nombre, apellido, cedula, email, telefono, direccion, rol):
     query = '''
         INSERT INTO public."PROFESORES" (
             "NOMBRE_PROF", 
-            "APELLIDO_PROF", 
+            "APELLIDO_PROF",
+            "FECHA_NAC_PERSONAL",
             "CEDULA_PROF", 
             "EMAIL_PROF", 
             "TELEFONO_PROF", 
-            "DIRECCION_PROF", 
+            "DIRECCION_PROF",
+            "CODIFICACION",
+            "CATEGORIA",
+            "ESTUDIOS_ACTUAL",
+            "FECHA_LABORAL", 
             "ID_ROL",
             "FECHA_REG_PROF"
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s,NOW());
+        VALUES (%s, %s, %s, %s, %s, %s, %s,%s,%s,%s,%s,%s,NOW());
     '''
-    db_conector.ejecutar_query(query, (nombre, apellido, cedula, email, telefono, direccion, rol_id))
+    db_conector.ejecutar_query(query, (nombre, apellido, fecha_nac,cedula, email, telefono, direccion, codificacion,categoria,estudios,fecha_job, rol_id))
 
 
-def editar_profesor(id_profesor, nombre, apellido, cedula, email, telefono, direccion, rol):
+def editar_profesor(id_profesor, nombre, apellido,fecha_nac, cedula, email, telefono, direccion,codificacion,categoria,estudios,fecha_job, rol):
     """
     Actualiza los datos de un profesor en la base de datos.
     """
@@ -41,14 +46,19 @@ def editar_profesor(id_profesor, nombre, apellido, cedula, email, telefono, dire
         SET 
             "NOMBRE_PROF" = %s,
             "APELLIDO_PROF" = %s,
+            "FECHA_NAC_PERSONAL" = %s,
             "CEDULA_PROF" = %s,
             "EMAIL_PROF" = %s,
             "TELEFONO_PROF" = %s,
             "DIRECCION_PROF" = %s,
+            "CODIFICACION" = %s,
+            "CATEGORIA" = %s,
+            "ESTUDIOS_ACTUAL" = %s,
+            "FECHA_LABORAL" = %s,
             "ID_ROL" = %s
         WHERE "ID_PROF" = %s;
     '''
-    db_conector.ejecutar_query(query, (nombre, apellido, cedula, email, telefono, direccion, rol_id, id_profesor))
+    db_conector.ejecutar_query(query, ( nombre, apellido,fecha_nac, cedula, email, telefono, direccion,codificacion,categoria,estudios,fecha_job, rol_id, id_profesor))
 
 def eliminar_profesor(id_profesor):
     """

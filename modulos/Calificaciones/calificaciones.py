@@ -3,23 +3,39 @@ from modulos.main_Componentes import componente_calificaciones
 
 def mostrar():
     st.header("Módulo de Calificaciones")
-    
-    # Obtener el ID de acceso del usuario logueado
-    id_acceso = st.session_state.get("id_acceso")
-    if not id_acceso:
-        st.error("No tienes permisos para acceder a este módulo.")
-        return
-    
-    # Obtener datos del profesor
-    secciones, calificaciones = componente_calificaciones.obtener_datos_calificaciones(id_acceso)
-    
-    if not secciones:
+
+    # Verificar si el usuario es coordinador
+    id_cordinates = st.session_state.get("coordinate")
+    print(id_cordinates)  # Asegúrate de que sea True o False
+    if id_cordinates:  # Aquí evalúas si es True
+        # Obtener todos los datos si es coordinador
+        secciones, calificaciones = componente_calificaciones.obtener_todos_datos_calificaciones()
+    else:
+        # Verificar si hay un ID de acceso válido
+        id_acceso = st.session_state.get("id_acceso")
+        if not id_acceso:
+            st.error("No tienes permisos para acceder a este módulo.")
+            return
+
+        # Obtener datos del profesor según su ID de acceso
+        secciones, calificaciones = componente_calificaciones.obtener_datos_calificaciones(id_acceso)
+
+    # Validar si hay datos en las secciones
+    if not secciones or len(secciones) == 0:
         st.warning("No se encontraron secciones asignadas.")
         return
 
+    # Validar si hay datos en las calificaciones
+    if not calificaciones or len(calificaciones) == 0:
+        st.warning("No se encontraron calificaciones registradas.")
+        return
+
+    # Si todo está bien, continuar con el flujo normal
+    st.success("Datos cargados correctamente. ¡Continúa!")
+
     # Mostrar los filtros
     st.subheader("Filtros")
-    
+
     # Filtro de secciones
     seccion_opciones = [seccion['NOMBRE_SECCION'] for seccion in secciones]
     seccion_filtro = st.selectbox("Filtrar por sección:", ["Todas"] + seccion_opciones)
@@ -50,7 +66,7 @@ def mostrar():
             calificacion for calificacion in calificaciones
             if calificacion['NOMBRE_SECCION'] == seccion_filtro
         ]
-    
+
     if estudiante_filtro:
         calificaciones_filtradas = [
             calificacion for calificacion in calificaciones_filtradas
@@ -68,7 +84,7 @@ def mostrar():
                 calificacion for calificacion in calificaciones_filtradas
                 if calificacion['CALIFICACION'] < calificacion_filtro_valor
             ]
-    
+
     if materia_filtro != "Todas":
         calificaciones_filtradas = [
             calificacion for calificacion in calificaciones_filtradas
@@ -93,9 +109,9 @@ def mostrar():
     # Hacer que solo la columna 'Calificación' sea editable
     calificaciones_editadas = st.data_editor(
         calificaciones_df,
-        use_container_width=True,  # O puedes dejarlo sin esta línea si no quieres el ajuste automático
+        use_container_width=True,
         key="calificaciones_editor",
-        disabled=["ID_CALIFICACION", "Estudiante", "Materia", "Fecha De Asignacion de Calificacion"]  # Deshabilitar las otras columnas
+        disabled=["ID_CALIFICACION", "Estudiante", "Materia", "Fecha De Asignacion de Calificacion"]
     )
 
     # Guardar cambios en la base de datos
@@ -108,7 +124,7 @@ def mostrar():
                     calificacion['ID_CALIFICACION'], nueva_calificacion
                 )
                 cambios_realizados = True
-        
+
         if cambios_realizados:
             st.success("Cambios guardados correctamente.")
         else:

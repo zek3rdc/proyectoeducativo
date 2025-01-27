@@ -3,6 +3,7 @@ from modulos.Utilidades.FuncionesGenerales import subHeader
 from modulos.main_Componentes import componentes_profesores
 from modulos import db_conector
 from modulos.CrearTablas import crear_dataframe
+import datetime
 
 
 
@@ -32,10 +33,19 @@ def mostrar():
         with st.form("form_agregar_profesor"):
             nombre = st.text_input("Nombre")
             apellido = st.text_input("Apellido")
+            fecha_nac = st.date_input(
+    "Fecha de Nacimiento",
+    min_value=datetime.date(1900, 1, 1),  # Fecha mínima (1 de enero de 1900)
+    max_value=datetime.date.today()  # Fecha máxima (hoy)
+)
             cedula = st.text_input("Cédula")
             email = st.text_input("Email")
             telefono = st.text_input("Teléfono")
             direccion = st.text_input("Dirección")
+            codificacion = st.selectbox("Codificación" , ["Lic.", "PG", "PGE","TSU","Br.Dc","NG"])
+            categoria = st.selectbox("Categoría" , ["I","II","III","IV","V","VI"])
+            estudios = st.selectbox("Estudia Actual" , ["Si","No"])
+            fecha_job = st.date_input("Desde Cuando Labora?")
             
             # Obtener los roles disponibles de la base de datos, incluyendo el rol 'Sin Rol'
             roles = componentes_profesores.listar_roles()  # Obtener roles desde la tabla de roles
@@ -46,7 +56,7 @@ def mostrar():
             submit = st.form_submit_button("Agregar")
             if submit:
                 if nombre and apellido and cedula and email and telefono and direccion and rol:
-                    componentes_profesores.agregar_profesor(nombre, apellido, cedula, email, telefono, direccion, rol)
+                    componentes_profesores.agregar_profesor(nombre, apellido, fecha_nac,cedula, email, telefono, direccion, codificacion,categoria,estudios,fecha_job, rol)
                     st.success("Profesor agregado exitosamente.")
                 else:
                     st.error("Todos los campos son obligatorios.")
@@ -70,10 +80,22 @@ def mostrar():
             with st.form("form_editar_profesor"):
                 nombre = st.text_input("Nombre", profesor["nombre"])
                 apellido = st.text_input("Apellido", profesor["apellido"])
+                fecha_nac = st.date_input(
+    "Fecha de Nacimiento",
+    profesor["fecha_nacimiento"],  # Fecha por defecto del profesor
+    min_value=datetime.date(1900, 1, 1),  # Fecha mínima (1 de enero de 1900)
+    max_value=datetime.date.today()  # Fecha máxima (hoy)
+)
+
                 cedula = st.text_input("Cédula", profesor["cedula"])
                 email = st.text_input("Email", profesor["email"])
                 telefono = st.text_input("Teléfono", profesor["telefono"])
                 direccion = st.text_input("Dirección", profesor["direccion"])
+                codificacion = st.selectbox("Codificación" , ["Lic.", "PG", "PGE","TSU","Br.Dc","NG"])
+                categoria = st.selectbox("Categoría" , ["I","II","III","IV","V","VI"])
+                estudios = st.selectbox("Estudia Actual" , ["Si","No"])
+                fecha_job = st.date_input("Desde Cuando Labora?", profesor["fecha_laboral"])
+
                 
                 # Obtener los roles disponibles de la base de datos, incluyendo 'Sin Rol'
                 roles = componentes_profesores.listar_roles()  # Obtener roles desde la tabla de roles
@@ -85,7 +107,7 @@ def mostrar():
                 if submit:
                     if nombre and apellido and cedula and email and telefono and direccion and rol:
                         componentes_profesores.editar_profesor(
-                            id_profesor, nombre, apellido, cedula, email, telefono, direccion, rol
+                            id_profesor, nombre, apellido,fecha_nac, cedula, email, telefono, direccion,codificacion,categoria,estudios,fecha_job, rol
                         )
                         st.success("Profesor actualizado exitosamente.")
                     else:

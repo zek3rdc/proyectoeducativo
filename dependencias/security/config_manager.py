@@ -246,3 +246,13 @@ class ConfigManager:
         for k in keys:
             data = data.get(k, {})
         return data or default
+        
+    def save(self):
+        """
+        Guarda la configuración actual en el archivo YAML.
+        """
+        try:
+            with open(self.path, "w") as file:
+                yaml.dump(self.config, file)
+        except Exception as e:
+            raise IOError(f"Error al guardar la configuración: {e}")

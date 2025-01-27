@@ -3,6 +3,11 @@ import pandas as pd
 import streamlit as st
 import os
 
+import plotly.graph_objects as go
+import pandas as pd
+import os
+import streamlit as st
+
 def crear_grafico_lineal(df_estudiantes):
     """
     Crea un gráfico lineal interactivo mostrando la frecuencia de ingreso por año escolar.
@@ -23,7 +28,6 @@ def crear_grafico_lineal(df_estudiantes):
         # Extraer el año de la columna 'Fecha de Registro'
         df_estudiantes_activos['Año de Registro'] = df_estudiantes_activos['Fecha de Registro'].dt.year
 
-
         # Agrupar por año y contar la cantidad de estudiantes
         ingreso_frecuencia = df_estudiantes_activos.groupby('Año de Registro').size()
 
@@ -32,7 +36,7 @@ def crear_grafico_lineal(df_estudiantes):
             x=ingreso_frecuencia.index,
             y=ingreso_frecuencia.values,
             mode='lines+markers',
-            line=dict(color='blue', width=2),
+            line=dict(color='yellow', width=2),  # Cambiar color a amarillo
             marker=dict(size=8),
             name="Frecuencia de Ingreso"
         )])
@@ -84,7 +88,6 @@ def crear_grafico_lineal(df_estudiantes):
     except Exception as e:
         st.error(f"Ha ocurrido un error inesperado: {e}")
         return None
-
 
 
 def crear_grafico_lineal_secciones(data, x_col, y_col):

@@ -14,7 +14,8 @@ credentials:
     name: some_cookie_name
   usernames:
     Admin:
-      acceso_calificaciones: SI
+      ID_ACCESO: admin_id
+      coordinate: true
       email: admin@gmail.com
       failed_login_attempts: 0
       id_acceso: admin_id
@@ -24,6 +25,8 @@ credentials:
       role: admin
       username: admin
     alexprofe:
+      ID_ACCESO: 74d57e92-2f0a-4228-afe3-da230d8c8d67
+      coordinate: false
       email: 1234423
       failed_login_attempts: 0
       id_acceso: 74d57e92-2f0a-4228-afe3-da230d8c8d67
@@ -32,6 +35,17 @@ credentials:
       password: $2b$12$HS7KP8GRgsvrsc9Tnm7Vce2wR.p.gSnRjmx4lyNG1/wTCPa2En/zS
       role: profesor
       username: alexprofe
+    joseprofe:
+      ID_ACCESO: 611d70d2-ec90-4914-a608-0d0bfc9608df
+      coordinate: true
+      email: 2323
+      failed_login_attempts: 0
+      id_acceso: 611d70d2-ec90-4914-a608-0d0bfc9608df
+      logged_in: false
+      name: Jose Antonio Perez Diaz
+      password: $2b$12$EcSk83ArcDtIZ9RQZUN.3.0.eIq2kFowiEAE8rdX6Z70Peyee47wW
+      role: admin
+      username: joseprofe
 imgIconPath: /logo.png
 imgLogoPath: /logo.png
 pre-authorized:

@@ -58,13 +58,18 @@ def main():
         name = st.session_state['name']
         hashed_password = config_manager.get(f"credentials.usernames.{username}.password")
         user_role = config_manager.get(f"credentials.usernames.{username}.role")
+        st.session_state['role'] = user_role
         user_permissions = config_manager.get(f"roles.{user_role}", [])
+    
 
         # Agregar ID de acceso al session_state
         id_acceso = config_manager.get(f"credentials.usernames.{username}.id_acceso")
         st.session_state['id_acceso'] = id_acceso  # Asegurarse de que esté disponible para otros módulos
         id_acceso_admin = config_manager.get(f"credentials.usernames.{username}.acceso_calificaciones")
         st.session_state['acceso_calificaciones'] = id_acceso_admin  # Asegurarse de que esté disponible para otros módulos
+        id_cordinates = config_manager.get(f"credentials.usernames.{username}.coordinate")
+        st.session_state['coordinate'] = id_cordinates.lower() == "true" if isinstance(id_cordinates, str) else bool(id_cordinates)
+
 
         # Log de inicio de sesión
         logger.info(f"Usuario {username} inició sesión con rol {user_role} y ID de acceso {id_acceso}")

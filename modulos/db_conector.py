@@ -540,6 +540,11 @@ SELECT
     p."CEDULA_PROF" AS cedula,
     p."TELEFONO_PROF" AS telefono,
     p."DIRECCION_PROF" AS direccion,
+    p."FECHA_NAC_PERSONAL" AS fecha_nacimiento,
+    p."CODIFICACION" AS codificacion,
+    p."CATEGORIA" AS categoria,
+    p."ESTUDIOS_ACTUAL" AS estudios_actual,
+    p."FECHA_LABORAL" AS fecha_laboral,
     p."EMAIL_PROF" AS email,
     COALESCE(r."ROL", 'Sin Rol') AS rol  -- Si no tiene rol, mostramos 'Sin Rol'
 FROM 
@@ -783,3 +788,66 @@ def insertar_id_acceso_en_base_de_datos(id_profesor, id_acceso):
     except Exception as e:
         return f"Error al actualizar ID de acceso en la base de datos: {e}"
 
+
+
+def obtener_estudiantes_con_seccion():
+    try:
+        connection = conectar()
+        if connection:
+            cursor = connection.cursor()
+            query = """
+SELECT 
+    "ESTUDIANTES"."ID_EST", 
+    "ESTUDIANTES"."NOMBRE_EST", 
+    "ESTUDIANTES"."APELLIDO_EST", 
+    "ASIGNACION_EST"."ID_SECCION", 
+    "SECCIONES"."NOMBRE_SECCION"
+FROM 
+    "ESTUDIANTES"
+INNER JOIN 
+    "ASIGNACION_EST" ON "ESTUDIANTES"."ID_EST" = "ASIGNACION_EST"."ID_EST"
+INNER JOIN 
+    "SECCIONES" ON "ASIGNACION_EST"."ID_SECCION" = "SECCIONES"."ID_SECCION";
+
+            """
+            cursor.execute(query)
+            estudiantes = cursor.fetchall()
+            connection.close()
+            return estudiantes
+        else:
+            return None
+    except Exception as e:
+        print(f"Error al obtener los estudiantes con sección: {e}")
+        return None
+
+
+def eliminar_estudiante_de_seccion(id_estudiante):
+    try:
+        conn = conectar()
+        cursor = conn.cursor()
+
+        # Eliminar las calificaciones del estudiante de la tabla CALIFICACIONES
+        query_eliminar_calificaciones = """
+        DELETE FROM "CALIFICACIONES" 
+        WHERE "ID_EST" = %s;
+        """
+        cursor.execute(query_eliminar_calificaciones, (id_estudiante,))
+        conn.commit()
+
+        # Eliminar la asignación del estudiante de la sección en la tabla ASIGNACION_EST
+        query_eliminar_asignacion = """
+        DELETE FROM "ASIGNACION_EST" 
+        WHERE "ID_EST" = %s;
+        """
+        cursor.execute(query_eliminar_asignacion, (id_estudiante,))
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        return True
+    except Exception as e:
+        print(f"Error al eliminar al estudiante de la sección: {e}")
+        if conn:
+            conn.rollback()
+        return False

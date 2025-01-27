@@ -79,3 +79,54 @@ def actualizar_calificacion(id_calificacion, nueva_calificacion):
     """
     # Ejecutar el query con el ID de calificación y la nueva calificación
     db_conector.ejecutar_query(query, (nueva_calificacion, id_calificacion))
+
+
+
+
+
+
+def obtener_todos_datos_calificaciones():
+    query_secciones = """
+    SELECT 
+        S."ID_SECCION", S."NOMBRE_SECCION", G."NOMBRE_GRADO" 
+    FROM 
+        public."SECCIONES" S
+    JOIN 
+        public."GRADOS" G ON S."ID_GRADO" = G."ID_GRADOS";
+    """
+    query_calificaciones = """
+    SELECT 
+        C."ID_CALIFICACION", 
+        E."NOMBRE_EST", 
+        E."APELLIDO_EST", 
+        M."NOMBRE_MATERIA", 
+        C."CALIFICACION", 
+        C."FECHA_CALIFICACION",
+        S."NOMBRE_SECCION"
+    FROM 
+        public."CALIFICACIONES" C
+    JOIN 
+        public."ESTUDIANTES" E ON C."ID_EST" = E."ID_EST"
+    JOIN 
+        public."MATERIAS" M ON C."ID_MATERIA" = M."ID_MATERIA"
+    JOIN
+        public."SECCIONES" S ON C."ID_SECCION" = S."ID_SECCION";
+    """
+    connection = db_conector.conectar()
+    if not connection:
+        return None, None
+    try:
+        with connection.cursor(cursor_factory=RealDictCursor) as cursor:
+            # Obtener todas las secciones
+            cursor.execute(query_secciones)
+            secciones = cursor.fetchall()
+            
+            # Obtener todas las calificaciones
+            cursor.execute(query_calificaciones)
+            calificaciones = cursor.fetchall()
+    except Exception as e:
+        st.error(f"Error al obtener datos: {e}")
+        return None, None
+    finally:
+        connection.close()
+    return secciones, calificaciones

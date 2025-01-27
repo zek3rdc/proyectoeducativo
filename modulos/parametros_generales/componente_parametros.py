@@ -74,7 +74,7 @@ def obtener_personal_sin_acceso():
 
 
 
-def asignar_usuario_a_personal(config_manager, id_profesor, nombre, apellido, cedula, username, contrasena, id_acceso):
+def asignar_usuario_a_personal(config_manager, id_profesor, nombre, apellido, cedula, username, contrasena, id_acceso,coordinate):
     """
     Asocia un nombre de usuario a un profesor y lo registra en un sistema de autenticación.
     El campo ID_ACCESO en la base de datos es UUID, por lo que se genera un UUID único.
@@ -112,7 +112,8 @@ def asignar_usuario_a_personal(config_manager, id_profesor, nombre, apellido, ce
             "password": contrasena_hash.decode('utf-8'),  # Guardar la contraseña hasheada
             "role": "Sin Asignar",  # Aquí puedes cambiar el rol según sea necesario
             "username": username,
-            "id_acceso": id_acceso  # Asignar el UUID generado como ID_ACCESO
+            "id_acceso": id_acceso ,
+            "coordinate": coordinate # Asignar el UUID generado como ID_ACCESO
         }
 
         # Guardar los cambios en el archivo YAML
@@ -166,7 +167,7 @@ def obtener_usuarios():
 
 
 # Función para editar un usuario (username, contraseña o ID de acceso)
-def editar_usuario(config_manager, id_profesor, nuevo_username, nueva_contrasena):
+def editar_usuario(config_manager, id_profesor, nuevo_username, nueva_contrasena,coordinate):
     """
     Permite editar los detalles de un usuario, actualizando el nombre de usuario,
     la contraseña y el ID_PROFESOR en el archivo YML.
@@ -204,6 +205,7 @@ def editar_usuario(config_manager, id_profesor, nuevo_username, nueva_contrasena
 
         usuarios[nuevo_username]["id_acceso"] = id_profesor
         usuarios[nuevo_username]["password"] = contrasena_hash
+        usuarios[nuevo_username]["coordinate"] = coordinate
 
         # Guardar los cambios en el archivo YAML
         with open(archivo_yml, "w") as file:
@@ -351,3 +353,34 @@ def eliminar_usuario(config_manager, id_acceso):
 
 
 
+def asignar_rol_usuario(config_manager, usuarios, username_a_modificar, nuevo_rol):
+    """
+    Asigna un nuevo rol a un usuario y actualiza el archivo YAML.
+    
+    Args:
+        config_manager: Instancia de ConfigManager para acceder y guardar la configuración.
+        usuarios (dict): Diccionario de usuarios cargado desde el archivo YAML.
+        username_a_modificar (str): Nombre de usuario al que se le asignará el nuevo rol.
+        nuevo_rol (str): El nuevo rol a asignar al usuario.
+        
+    Returns:
+        str: Mensaje de éxito o error.
+    """
+    try:
+        usuario_info = usuarios[username_a_modificar]
+        
+        # Asignar el nuevo rol al usuario
+        usuario_info["role"] = nuevo_rol
+        usuarios[username_a_modificar] = usuario_info  # Guardar los cambios en el usuario
+
+        # Actualizar los usuarios en la configuración
+        config_manager.config["credentials"]["usernames"] = usuarios
+        config_manager.save()  # Guardar el archivo actualizado
+        
+        # Obtener los permisos del rol
+        permisos = config_manager.config.get("roles", {}).get(nuevo_rol, [])
+        
+        # Devolver el mensaje de éxito
+        return f"El rol de {username_a_modificar} se ha actualizado a {nuevo_rol} con permisos: {', '.join(permisos)}."
+    except Exception as e:
+        return f"Error al actualizar el rol del usuario: {str(e)}"

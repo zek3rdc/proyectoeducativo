@@ -120,16 +120,18 @@ def mostrar():
                     if id_acceso_personal != "Sin Asignar" and id_acceso_personal != "No disponible":
                         # Consultar en el archivo YAML si ya existe este ID_ACCESO
                         usuarios = config_manager.config.get("usuarios", {})
-                        print(id_acceso_personal)
+                      
                         # Verificar si existe un usuario con el mismo ID de acceso
                         if any(usuario.get("id_acceso") == id_acceso_personal for usuario in usuarios.values()):
-                            print(id_acceso_personal)
+                           
                             st.warning(f"El personal {seleccionado['nombre']} {seleccionado['apellido']} ya tiene un usuario asignado.")
                         else:
                             # Proceso para asignar el usuario si no existe
                             username = st.text_input("Nombre de usuario")
                             contrasena = st.text_input("Contraseña", type="password")  # Contraseña personalizada
+                            permisos_coordinador = st.checkbox("Asignar rol de coordinador")
                             submit = st.button("Crear Usuario")
+
 
                             if submit:
                                 if username and contrasena:
@@ -144,7 +146,8 @@ def mostrar():
                                         seleccionado["cedula"],
                                         username,
                                         contrasena,  # Contraseña proporcionada
-                                        id_acceso_seguro  # Asignar el ID de acceso generado
+                                        id_acceso_seguro,
+                                        permisos_coordinador  # Asignar el ID de acceso generado
                                     )
                                     if "exitosamente" in mensaje:
                                         st.success(mensaje)
@@ -176,6 +179,7 @@ def mostrar():
                             "Nombre": info.get('name', 'No disponible'),
                             "Rol: ": info.get('role', 'No disponible'),
                             # Convertir 'Cédula' a int si es posible, si no, dejar "No disponible"
+                            "Cordinador ": info.get('coordinate', 'No disponible'),
                             "Cédula": str(info.get('cedula', 'No disponible')),  # Aseguramos que sea una cadena
                             "ID Profesor": info.get('id_profesor', 'No disponible'),
                             "ID Acceso": info.get('ID_ACCESO', 'No disponible')  # Mostrar el ID de acceso
@@ -231,6 +235,7 @@ def mostrar():
                 # Campos para editar
                 nuevo_username = st.text_input("Nuevo Nombre de Usuario", value=username_a_editar)
                 nueva_contrasena = st.text_input("Nueva Contraseña", type="password")
+                coordinate_new = st.checkbox("Nuevo Coordinador?")
 
                 submit = st.button("Actualizar Usuario")
 
@@ -240,7 +245,8 @@ def mostrar():
                             config_manager,
                             usuario_info["id_acceso"],
                             nuevo_username,
-                            nueva_contrasena  # Solo se actualizará si la contraseña es proporcionada
+                            nueva_contrasena,
+                            coordinate_new  # Solo se actualizará si la contraseña es proporcionada
                         )
                         if "exitosamente" in mensaje:
                             st.success(mensaje)
@@ -279,48 +285,46 @@ def mostrar():
                         st.warning("No has seleccionado ningún usuario para eliminar.")
 
 
-            with tabs[3]:
-                st.subheader("Asignar Rol a un Usuario Existente")
+        with tabs[3]:
+            st.subheader("Asignar Rol a un Usuario Existente")
 
-                # Obtener la lista de usuarios desde el archivo YAML
-                usuarios = obtener_usuarios()
-                
-                if usuarios:
-                    # Mostrar un selectbox para elegir el usuario a modificar
-                    username_a_modificar = st.selectbox("Selecciona el usuario a asignar un rol", list(usuarios.keys()))
-                    usuario_info = usuarios[username_a_modificar]
+            # Obtener la lista de usuarios desde el archivo YAML
+            usuarios = obtener_usuarios()
+            
+            if usuarios:
+                # Mostrar un selectbox para elegir el usuario a modificar
+                username_a_modificar = st.selectbox("Selecciona el usuario a asignar un rol", list(usuarios.keys()))
+                usuario_info = usuarios[username_a_modificar]
 
-                    # Mostrar el rol actual del usuario
-                    st.write(f"Rol actual de {username_a_modificar}: {usuario_info.get('role', 'No asignado')}")
+                # Mostrar el rol actual del usuario
+                st.write(f"Rol actual de {username_a_modificar}: {usuario_info.get('role', 'No asignado')}")
 
-                    # Obtener los roles predefinidos del archivo YAML
-                    roles_disponibles = config_manager.config.get("roles", {}).keys()
+                # Obtener los roles predefinidos del archivo YAML
+                roles_disponibles = config_manager.config.get("roles", {}).keys()
 
-                    # Selección de nuevo rol para el usuario
-                    nuevo_rol = st.selectbox("Selecciona el nuevo rol", list(roles_disponibles))
+                # Selección de nuevo rol para el usuario
+                nuevo_rol = st.selectbox("Selecciona el nuevo rol", list(roles_disponibles))
 
-                    # Mostrar las opciones disponibles para ese rol
-                    st.write(f"Permisos del rol '{nuevo_rol}':")
-                    permisos = config_manager.config.get("roles", {}).get(nuevo_rol, [])
+                # Mostrar las opciones disponibles para ese rol
+                st.write(f"Permisos del rol '{nuevo_rol}':")
+                permisos = config_manager.config.get("roles", {}).get(nuevo_rol, [])
+
+                # Verificar si la lista de permisos está vacía
+                if permisos:
                     st.write(", ".join(permisos))
-
-                    submit = st.button("Actualizar Rol")
-
-                    if submit:
-                        # Actualizar el rol en el archivo YAML
-                        try:
-                            # Actualizamos el rol del usuario
-                            usuario_info["role"] = nuevo_rol
-                            usuarios[username_a_modificar] = usuario_info  # Guardamos los cambios en el usuario
-
-                            # Guardar los cambios en el archivo YAML
-                            config_manager.config["credentials"]["usernames"] = usuarios
-                            config_manager.save()  # Guardamos el archivo actualizado
-
-                            st.success(f"El rol de {username_a_modificar} se ha actualizado a {nuevo_rol} con permisos: {', '.join(permisos)}.")
-                        except Exception as e:
-                            st.error(f"Error al actualizar el rol del usuario: {str(e)}")
                 else:
-                    st.info("No hay usuarios registrados para asignar un rol.")
+                    st.write("Este rol no tiene permisos definidos.")
 
+                submit = st.button("Actualizar Rol")
 
+                if submit:
+                    # Llamar a la función para actualizar el rol
+                    mensaje = componente_parametros.asignar_rol_usuario(config_manager, usuarios, username_a_modificar, nuevo_rol)
+                    if "Error" in mensaje:
+                        st.error(mensaje)
+                    else:
+                        st.success(mensaje)
+                        time.sleep(2)
+                        st.rerun()
+            else:
+                st.info("No hay usuarios registrados para asignar un rol.")
