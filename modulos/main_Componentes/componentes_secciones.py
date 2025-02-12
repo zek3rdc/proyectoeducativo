@@ -39,22 +39,21 @@ def obtener_profesores():
     """
     try:
         query = """
-        SELECT 
-            p."ID_PROF" AS id_profesor,
-            p."NOMBRE_PROF" AS nombre,
-            p."APELLIDO_PROF" AS apellido,
-            p."CEDULA_PROF" AS cedula,
-            r."ROL" AS rol
-        FROM 
-            public."PROFESORES" p
-        INNER JOIN 
-            public."ROLES" r 
-        ON 
-            p."ID_ROL" = r."ID_ROL"
-        WHERE 
-            r."ROL" = 'PROFESOR'
-        ORDER BY 
-            p."NOMBRE_PROF";
+SELECT 
+    p."ID_PROF" AS id_profesor,
+    p."NOMBRE_PROF" AS nombre,
+    p."APELLIDO_PROF" AS apellido,
+    p."CEDULA_PROF" AS cedula,
+    r."ROL" AS rol
+FROM 
+    public."PROFESORES" p
+INNER JOIN 
+    public."ROLES" r 
+ON 
+    p."ID_ROL" = r."ID_ROL"
+ORDER BY 
+    p."NOMBRE_PROF";
+
         """
         # Ejecuta el query y devuelve los datos
         return db_conector.obtener_datos(query)
@@ -127,3 +126,63 @@ def rename_fields(materias):
     ]
     
     return materias_renombradas
+
+def obtener_personal_por_rol(rol_seleccionado):
+    """
+    Obtiene una lista de personal asociado a un rol específico.
+
+    :param rol_seleccionado: Nombre del rol seleccionado.
+    :return: Lista de tuplas con (ID, Nombre, Apellido, Cédula) del personal.
+    """
+    try:
+        connection = db_conector.conectar()
+        if connection is None:
+            return []
+
+        with connection.cursor() as cursor:
+            query = """
+                SELECT p."ID_PROF", p."NOMBRE_PROF", p."APELLIDO_PROF", p."CEDULA_PROF"
+                FROM public."PROFESORES" p
+                INNER JOIN public."ROLES" r ON p."ID_ROL" = r."ID_ROL"
+                WHERE r."ROL" = %s
+                ORDER BY p."NOMBRE_PROF";
+            """
+            cursor.execute(query, (rol_seleccionado,))
+            personal = cursor.fetchall()  # Lista de tuplas con el personal del rol seleccionado
+        
+        connection.close()
+        return personal  # Devuelve [(id, nombre, apellido, cedula), ...]
+
+    except Exception as e:
+        print(f"Error al obtener personal por rol: {e}")
+        return []
+
+
+
+def obtener_roles():
+    """
+    Obtiene una lista de todos los roles disponibles en la base de datos.
+
+    :return: Lista de roles en formato [(id_rol, nombre_rol), ...].
+    """
+    try:
+        connection = db_conector.conectar()
+        if connection is None:
+            return []
+
+        with connection.cursor() as cursor:
+            query = """
+                SELECT "ID_ROL", "ROL"
+                FROM public."ROLES"
+                ORDER BY "ROL";
+            """
+            cursor.execute(query)
+            roles = cursor.fetchall()  # Obtiene todos los resultados como una lista de tuplas
+        
+        connection.close()
+        return roles  # Retorna lista de tuplas con (ID, Nombre del Rol)
+
+    except Exception as e:
+        print(f"Error al obtener roles: {e}")
+        return []
+

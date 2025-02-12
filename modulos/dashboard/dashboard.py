@@ -9,6 +9,7 @@ from modulos.materias import materias
 from modulos.grados import grados
 from modulos.Representantes import representantes
 from modulos.parametros_generales import parametros_generales
+from modulos.Asistencias_personal import asistencias_personal
 
 def main(user_permissions):
     st.title("Dashboard Principal")
@@ -40,7 +41,7 @@ def main(user_permissions):
 def generar_menu(user_permissions):
     return [
         option for option in [
-            "Dashboard", "Calificaciones", "Asistencias", "Personal", 
+            "Dashboard", "Calificaciones", "Asistencias","Asistencias Del Personal", "Personal", 
             "Estudiantes", "Materias", "Representantes", "Rendimiento", 
             "Secciones", "Grados","Parametros Generales"
         ] if option in user_permissions
@@ -60,6 +61,8 @@ def app(user_permissions):
             calificaciones.mostrar()
         elif opcion == "Asistencias":
             asistencias.mostrar()
+        elif opcion == "Asistencias Del Personal":
+            asistencias_personal.mostrar()
         elif opcion == "Personal":
             profesores.mostrar()
         elif opcion == "Estudiantes":

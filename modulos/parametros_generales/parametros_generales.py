@@ -19,7 +19,7 @@ def obtener_modulos_disponibles():
     Retorna una lista de módulos disponibles basados en las importaciones.
     """
     return [
-        "Dashboard", "Calificaciones", "Asistencias", "Personal", 
+        "Dashboard", "Calificaciones", "Asistencias","Asistencias Del Personal", "Personal", 
         "Estudiantes", "Materias", "Representantes", "Rendimiento", 
         "Secciones", "Grados", "Parametros Generales"
     ]

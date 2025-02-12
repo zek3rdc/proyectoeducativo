@@ -52,7 +52,6 @@ def ejecutar_modificacion(query, parametros=None):
         return 0
 
 # Consultar ESTUDIANTES
-# Consultar ESTUDIANTES
 def obtener_ESTUDIANTES_1():
     connection = conectar()  # Conectar a la base de datos
     if connection:
@@ -89,6 +88,8 @@ LEFT JOIN
     "ASIGNACION_EST" ae ON e."ID_EST" = ae."ID_EST"  -- Relación con la tabla de asignaciones
 LEFT JOIN 
     "SECCIONES" s ON ae."ID_SECCION" = s."ID_SECCION"  -- Obtener el nombre de la sección
+WHERE
+    pe."ESTADO" = 'ACTIVO'  -- Filtrar solo los estudiantes cuyo estado en REPRE_EST es 'ACTIVO'
             """)
             
             # Obtener todos los resultados de la consulta
@@ -102,6 +103,7 @@ LEFT JOIN
             return None
         finally:
             cerrar_conexion(connection)  # Asegúrate de cerrar la conexión
+
 
 
 

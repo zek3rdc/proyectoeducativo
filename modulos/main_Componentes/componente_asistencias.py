@@ -4,10 +4,16 @@ import pandas as pd
 def obtener_secciones(user_id):
     """Obtiene las secciones asignadas al usuario (profesor)."""
     query = """
-    SELECT s."ID_SECCION", s."NOMBRE_SECCION" 
-    FROM "SECCIONES" s 
-    JOIN "PROFESORES" p ON s."ID_PROF" = p."ID_PROF"
-    WHERE p."ID_ACCESO" = %s
+SELECT DISTINCT 
+    g."ID_GRADOS", 
+    g."NOMBRE_GRADO", 
+    s."ID_SECCION", 
+    s."NOMBRE_SECCION"
+FROM "GRADOS" g
+JOIN "SECCIONES" s ON g."ID_GRADOS" = s."ID_GRADO"
+JOIN "PROFESORES" p ON s."ID_PROF" = p."ID_PROF"
+WHERE p."ID_ACCESO" = %s;
+
     """
     secciones = db_conector.ejecutar_query(query, (user_id,))
     return secciones
@@ -25,22 +31,39 @@ WHERE s."ID_PROF" = (SELECT "ID_PROF" FROM "PROFESORES" WHERE "ID_ACCESO" = %s)
     estudiantes = db_conector.ejecutar_query(query, (user_id,))
     return estudiantes
 
-def registrar_asistencia_estudiante(estudiante, seccion, fecha_asistencia):
-    """Registra la asistencia de un estudiante en una sección."""
-    query = """
-    INSERT INTO "ASISTENCIA_ESTUDIANTES" ("ID_EST", "ID_SECCION", "FECHA_ASISTENCIA", "ESTADO_ASISTENCIA", "YEAR_ESCOLAR")
-    VALUES (%s, %s, %s, TRUE, %s)
+def registrar_asistencia_estudiante(id_estudiante, id_seccion, fecha_asistencia, asistio, justificacion=False):
+    """Registra o actualiza la asistencia de un estudiante en una sección, incluyendo la justificación."""
+
+    # Obtener el año escolar actual (Ejemplo: "2024-09-01")
+    today = pd.to_datetime("today")
+    year_escolar = f"{today.year}-09-01" if today.month >= 9 else f"{today.year-1}-09-01"
+
+    # Verificar si la asistencia ya existe
+    query_verificar = """
+    SELECT COUNT(*) FROM "ASISTENCIA_ESTUDIANTES"
+    WHERE "ID_EST" = %s AND "FECHA_ASISTENCIA" = %s
     """
-    # Obtener ID del estudiante a partir de su nombre completo
-    nombre, apellido = estudiante.split(" ", 1)
-    query_id_est = "SELECT \"ID_EST\" FROM \"ESTUDIANTES\" WHERE \"NOMBRE_EST\" = %s AND \"APELLIDO_EST\" = %s"
-    id_estudiante = db_conector.ejecutar_query(query_id_est, (nombre, apellido))[0]['ID_EST']
-    
-    # Crear la fecha para YEAR_ESCOLAR: primer día del año actual
-    year_escolar = f"{pd.to_datetime('today').year}-01-01"
-    
-    resultado = db_conector.ejecutar_query(query, (id_estudiante, seccion, fecha_asistencia, year_escolar))
+    existe = db_conector.ejecutar_query(query_verificar, (id_estudiante, fecha_asistencia))[0]['count']
+
+    if existe:
+        # Si la asistencia ya existe, actualizar el estado y la justificación
+        query_update = """
+        UPDATE "ASISTENCIA_ESTUDIANTES"
+        SET "ESTADO_ASISTENCIA" = %s, "JUSTIFICACION" = %s
+        WHERE "ID_EST" = %s AND "FECHA_ASISTENCIA" = %s
+        """
+        resultado = db_conector.ejecutar_query(query_update, (asistio, justificacion, id_estudiante, fecha_asistencia))
+    else:
+        # Si la asistencia no existe, insertar un nuevo registro
+        query_insert = """
+        INSERT INTO "ASISTENCIA_ESTUDIANTES" ("ID_EST", "ID_SECCION", "FECHA_ASISTENCIA", "ESTADO_ASISTENCIA", "JUSTIFICACION", "YEAR_ESCOLAR")
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """
+        resultado = db_conector.ejecutar_query(query_insert, (id_estudiante, id_seccion, fecha_asistencia, asistio, justificacion, year_escolar))
+
     return resultado
+
+
 
 
 def registrar_asistencia_profesor(user_id, seccion):
@@ -64,7 +87,7 @@ def obtener_asistencias_estudiantes(seccion, fecha_inicio=None, fecha_fin=None):
         fecha_fin_formateada = fecha_fin.strftime('%Y-%m-%d')
         
         query = """
-        SELECT e."NOMBRE_EST", e."APELLIDO_EST", a."FECHA_ASISTENCIA", a."ESTADO_ASISTENCIA", e."ID_EST"
+        SELECT e."NOMBRE_EST", e."APELLIDO_EST", a."FECHA_ASISTENCIA", a."ESTADO_ASISTENCIA",a."JUSTIFICACION" ,e."ID_EST"
         FROM "ASISTENCIA_ESTUDIANTES" a
         JOIN "ESTUDIANTES" e ON a."ID_EST" = e."ID_EST"
         JOIN "SECCIONES" s ON a."ID_SECCION" = s."ID_SECCION"
@@ -75,7 +98,7 @@ def obtener_asistencias_estudiantes(seccion, fecha_inicio=None, fecha_fin=None):
     
     else:
         query = """
-        SELECT e."NOMBRE_EST", e."APELLIDO_EST", a."FECHA_ASISTENCIA", a."ESTADO_ASISTENCIA"
+        SELECT e."NOMBRE_EST", e."APELLIDO_EST", a."FECHA_ASISTENCIA", a."ESTADO_ASISTENCIA", a."JUSTIFICACION"
         FROM "ASISTENCIA_ESTUDIANTES" a
         JOIN "ESTUDIANTES" e ON a."ID_EST" = e."ID_EST"
         JOIN "SECCIONES" s ON a."ID_SECCION" = s."ID_SECCION"
@@ -117,9 +140,11 @@ def eliminar_asistencia_por_estudiante_y_fecha(id_estudiante, fecha_asistencia):
 def obtener_todas_las_secciones():
     
     query = """
-    SELECT s."ID_SECCION", s."NOMBRE_SECCION" 
-    FROM "SECCIONES" s 
+    SELECT DISTINCT g."ID_GRADOS", g."NOMBRE_GRADO", s."ID_SECCION", s."NOMBRE_SECCION"
+    FROM "GRADOS" g
+    JOIN "SECCIONES" s ON g."ID_GRADOS" = s."ID_GRADO"
     JOIN "PROFESORES" p ON s."ID_PROF" = p."ID_PROF";
+
     """
     secciones = db_conector.ejecutar_query(query,)
     return secciones

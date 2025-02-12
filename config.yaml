@@ -46,6 +46,17 @@ credentials:
       password: $2b$12$EcSk83ArcDtIZ9RQZUN.3.0.eIq2kFowiEAE8rdX6Z70Peyee47wW
       role: admin
       username: joseprofe
+    zatanas:
+      ID_ACCESO: 94a976a5-19f7-4af6-b3c3-b25778057639
+      coordinate: false
+      email: 644565
+      failed_login_attempts: 0
+      id_acceso: 94a976a5-19f7-4af6-b3c3-b25778057639
+      logged_in: false
+      name: zatanas gacial
+      password: $2b$12$nXxwuluJhAflaQs7Npytmu76dOWpAeum2haX4ujPsZxFQaJoMQ25i
+      role: profesor
+      username: zatanas
 imgIconPath: /logo.png
 imgLogoPath: /logo.png
 pre-authorized:
@@ -56,6 +67,7 @@ roles:
   - Dashboard
   - Calificaciones
   - Asistencias
+  - Asistencias Del Personal
   - Personal
   - Estudiantes
   - Materias
@@ -73,8 +85,14 @@ roles:
   - Dashboard
   - Calificaciones
   - Asistencias
+  - Asistencias Del Personal
+  - Personal
   - Estudiantes
+  - Materias
   - Representantes
   - Rendimiento
+  - Secciones
+  - Grados
+  - Parametros Generales
   sin asignar: null
 table_color: Purples
