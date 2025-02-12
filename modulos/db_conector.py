@@ -548,6 +548,8 @@ SELECT
     p."ESTUDIOS_ACTUAL" AS estudios_actual,
     p."FECHA_LABORAL" AS fecha_laboral,
     p."EMAIL_PROF" AS email,
+    P."TURNO" AS Turno,
+    p."ESTADO" AS estado,
     COALESCE(r."ROL", 'Sin Rol') AS rol  -- Si no tiene rol, mostramos 'Sin Rol'
 FROM 
     public."PROFESORES" p

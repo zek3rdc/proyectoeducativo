@@ -6,7 +6,7 @@ from modulos.CrearTablas import crear_dataframe
 import datetime
 
 def dashboard():
-    subHeader('Compras por Proveedor', divider='rainbow',)
+    subHeader('Proximamente', divider='rainbow',)
 
 def mostrar():
     st.header("Módulo de Personal")
@@ -51,6 +51,8 @@ def mostrar():
             codificacion = st.selectbox("Codificación", ["Lic.", "PG", "PGE", "TSU", "Br.Dc", "NG"])
             categoria = st.selectbox("Categoría", ["I", "II", "III", "IV", "V", "VI"])
             estudios = st.selectbox("Estudia Actual", ["Si", "No"])
+            turno = st.multiselect("Turno", ["Mañana", "Tarde","Sab'Dom"])
+            estado = st.selectbox("Estado", ["Activo", "Inactivo"])
             fecha_job = st.date_input(
                 "Desde Cuando Labora?",
                 min_value=datetime.date(1900, 1, 1),
@@ -65,7 +67,7 @@ def mostrar():
             submit = st.form_submit_button("Agregar")
             if submit:
                 if nombre and apellido and cedula and email and telefono and direccion and rol:
-                    componentes_profesores.agregar_profesor(nombre, apellido, fecha_nac, cedula, email, telefono, direccion, codificacion, categoria, estudios, fecha_job, rol)
+                    componentes_profesores.agregar_profesor(nombre, apellido, fecha_nac, cedula, email, telefono, direccion, codificacion, categoria, estudios,turno,estado, fecha_job, rol)
                     st.success("Profesor agregado exitosamente.")
                 else:
                     st.error("Todos los campos son obligatorios.")
@@ -79,7 +81,7 @@ def mostrar():
         else:
             # Mostrar la tabla de profesores
             df = crear_dataframe(profesores)
-            st.table(df)
+            st.dataframe(df)
 
             # Selección del profesor a editar
             ids = [prof["id_profesor"] for prof in profesores]
@@ -104,6 +106,8 @@ def mostrar():
                 codificacion = st.selectbox("Codificación", ["Lic.", "PG", "PGE", "TSU", "Br.Dc", "NG"])
                 categoria = st.selectbox("Categoría", ["I", "II", "III", "IV", "V", "VI"])
                 estudios = st.selectbox("Estudia Actual", ["Si", "No"])
+                turno = st.multiselect("Turno", ["Mañana", "Tarde","Sab'Dom"])
+                estado = st.selectbox("Estado", ["Activo", "Inactivo"])
                 fecha_job = st.date_input(
                     "Desde Cuando Labora?",
                     profesor["fecha_laboral"],
@@ -119,7 +123,7 @@ def mostrar():
                 submit = st.form_submit_button("Guardar Cambios")
                 if submit:
                     if nombre and apellido and cedula and email and telefono and direccion and rol:
-                        componentes_profesores.editar_profesor(id_profesor, nombre, apellido, fecha_nac, cedula, email, telefono, direccion, codificacion, categoria, estudios, fecha_job, rol)
+                        componentes_profesores.editar_profesor(id_profesor, nombre, apellido, fecha_nac, cedula, email, telefono, direccion, codificacion, categoria, estudios,turno,estado, fecha_job, rol)
                         st.success("Profesor actualizado exitosamente.")
                     else:
                         st.error("Todos los campos son obligatorios.")

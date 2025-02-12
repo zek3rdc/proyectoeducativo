@@ -26,7 +26,7 @@ def main(user_permissions):
         </style>
     """, unsafe_allow_html=True)
 
-    tab_names = [tab for tab in ["Estudiantes", "Rendimiento"] if tab in user_permissions]
+    tab_names = [tab for tab in ["Estudiantes", "Personal"] if tab in user_permissions]
     if tab_names:
         tabs = st.tabs(tab_names)
 
@@ -34,7 +34,7 @@ def main(user_permissions):
             with tabs[i]:
                 if tab_name == "Estudiantes":
                     estudiantes.dashboard()
-                elif tab_name == "Rendimiento":
+                elif tab_name == "Personal":
                     profesores.dashboard()
 
 
