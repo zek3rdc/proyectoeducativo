@@ -1,15 +1,15 @@
 import streamlit as st
 from modulos import db_conector
-from modulos.main_Componentes import Componentes_estudiantes  # Asegúrate de que la ruta sea correcta
+from modulos.main_Componentes import Componentes_estudiantes
 from modulos import CrearTablas
 from modulos.main_Componentes import graficar_torta, grafico_lineal
 from modulos.Utilidades.FuncionesGenerales import subHeader
 import time
 import pandas as pd
 import os
-from PIL import Image  # Para manejar la imagen cargada
+from PIL import Image
 from datetime import datetime, timedelta
-
+from modulos.Utilidades.excel_generator import excel_generator
 
 def dashboard():
     st.subheader('Estudiantes', divider='rainbow')
@@ -22,7 +22,6 @@ def dashboard():
 
     df_estudiantes = pd.DataFrame(estudiantes)
     df_estudiantes = Componentes_estudiantes.renombrar_columnas(df_estudiantes)
-    
 
     col1, col2 = st.columns(2)
 
@@ -35,12 +34,18 @@ def dashboard():
 
         st.sidebar.subheader("Filtrar Asistencias por Semana")
 
+        # Selector de rango de fechas
         fecha_hoy = datetime.now()
         fecha_desde = fecha_hoy - timedelta(days=fecha_hoy.weekday())
         fecha_hasta = fecha_desde + timedelta(days=6)
 
         fecha_desde = st.sidebar.date_input("Fecha Desde (Inicio de Semana)", fecha_desde)
-        fecha_hasta = fecha_desde + timedelta(days=6)
+        fecha_hasta = st.sidebar.date_input("Fecha Hasta (Fin de Semana)", fecha_hasta)
+
+        # Asegurarse de que la fecha hasta no sea anterior a la fecha desde
+        if fecha_hasta < fecha_desde:
+            st.sidebar.error("La fecha hasta debe ser mayor o igual a la fecha desde.")
+            return
 
         fecha_desde_anterior = fecha_desde - timedelta(days=7)
         fecha_hasta_anterior = fecha_hasta - timedelta(days=7)
@@ -65,27 +70,70 @@ def dashboard():
 
         if asistencias_semana and asistencias_semana_anterior:
             df_asistencias = pd.DataFrame(asistencias_semana, columns=[
-    'ID_ASISTENCIA_ESTUD', 'Nombre_Estudiante', 'Apellido_Estudiante', 'Sección', 
-    'Grado', 'Profesor_A_Cargo', 'FECHA_ASISTENCIA', 'ESTADO_ASISTENCIA', 'YEAR_ESCOLAR'
-])
+                'ID_ASISTENCIA_ESTUD', 'Nombre_Estudiante', 'Apellido_Estudiante', 'Sección', 
+                'Grado', 'Profesor_A_Cargo', 'FECHA_ASISTENCIA', 'ESTADO_ASISTENCIA', 'YEAR_ESCOLAR'
+            ])
 
-
-
-            df_asistencias_anterior = pd.DataFrame(asistencias_semana_anterior, columns=['ID_ASISTENCIA_ESTUD', 'Nombre_Estudiante', 'Apellido_Estudiante', 'Sección', 
-    'Grado', 'Profesor_A_Cargo', 'FECHA_ASISTENCIA', 'ESTADO_ASISTENCIA', 'YEAR_ESCOLAR'])
+            df_asistencias_anterior = pd.DataFrame(asistencias_semana_anterior, columns=[
+                'ID_ASISTENCIA_ESTUD', 'Nombre_Estudiante', 'Apellido_Estudiante', 'Sección', 
+                'Grado', 'Profesor_A_Cargo', 'FECHA_ASISTENCIA', 'ESTADO_ASISTENCIA', 'YEAR_ESCOLAR'
+            ])
             grafico_lineal.crear_grafico_asistencias(df_asistencias, df_asistencias_anterior)
         else:
             st.warning("No se encontraron suficientes datos para comparar semanas.")
 
-        #Exanders para mas detalles
+        # Expanders para más detalles
         with st.expander("📌 Detalles de las Asistencias de la Semana"):
-            st.dataframe(df_asistencias)
+            if 'df_asistencias' in locals() and df_asistencias is not None:
+                if not df_asistencias.empty:
+                    st.dataframe(df_asistencias)
+                else:
+                    st.warning("No hay datos en el DataFrame.")
+            else:
+                st.warning("No hay suficientes datos para mostrar")
 
         with st.expander("📌 Detalles de las Asistencias de la Semana Anterior"):
-            st.dataframe(df_asistencias_anterior)
+            if 'df_asistencias_anterior' in locals() and df_asistencias_anterior is not None:
+                if isinstance(df_asistencias_anterior, pd.DataFrame) and not df_asistencias_anterior.empty:
+                    st.dataframe(df_asistencias_anterior)
+                else:
+                    st.warning("No hay datos en el DataFrame.")
+            else:
+                st.warning("No hay suficientes datos para mostrar")
+
     with st.expander("📌 Detalles de los Estudiantes"):
-        st.dataframe(df_estudiantes)
-    
+        if 'df_estudiantes' in locals() and df_estudiantes is not None:
+            if isinstance(df_estudiantes, pd.DataFrame) and not df_estudiantes.empty:
+                st.dataframe(df_estudiantes)
+            else:
+                st.warning("No hay datos en el DataFrame.")
+        else:
+            st.warning("No hay suficientes datos para mostrar")
+
+    # Variables para el manejo del archivo Excel
+    excel_generado = False  # Variable para controlar si el Excel ha sido generado
+    output_path = st.session_state.get('output_path')  # Obtener la ruta de salida
+
+    # Botón para generar el archivo Excel
+    if st.button("Generar Excel"):
+        # Lógica para generar el archivo Excel
+        plantilla_path = st.session_state.get('plantilla_path')
+        fecha_inicio = fecha_desde.strftime("%Y-%m-%d")
+        fecha_fin = fecha_hasta.strftime("%Y-%m-%d")
+
+        # Crear una instancia de la clase y generar el reporte
+        reporte = excel_generator.ReporteExcel(plantilla_path, output_path)
+        reporte.generar_reporte_excel(fecha_inicio, fecha_fin)
+
+        st.success("Archivo Excel generado exitosamente.")
+        excel_generado = True  # Cambiar el estado a True
+
+    if st.button("Descargar Excel"):
+        if os.path.exists(output_path):
+            with open(output_path, "rb") as file:
+                st.download_button("Descargar Excel", file, file_name="resultado.xlsx")
+        else:
+            st.warning("El archivo Excel no existe.")
 
 def mostrar():
     import datetime

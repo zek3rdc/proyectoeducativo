@@ -32,11 +32,7 @@ def renombrar_columnas(df):
 # Agregar un estudiante
 def agregar_estudiante(nombre, apellido, cedula, cedula_est, id_representante, genero, estado, condicion, fecha_nac, email, telefono):
     try:
-        # Si la cédula está vacía, asignar NULL (None en Python)
-        cedula = int(cedula) if cedula and cedula.isdigit() else None
 
-        # Si la cédula estudiantil está vacía, asignar NULL
-        cedula_est = int(cedula_est) if cedula_est and cedula_est.isdigit() else None
 
         # Validar si la cédula ya existe (solo si no es NULL)
         if cedula and db_conector.cedula_existe(cedula):

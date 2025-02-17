@@ -4,6 +4,7 @@ from modulos.main_Componentes import componentes_profesores
 from modulos import db_conector
 from modulos.CrearTablas import crear_dataframe
 import datetime
+import time
 
 def dashboard():
     subHeader('Proximamente', divider='rainbow',)
@@ -69,6 +70,8 @@ def mostrar():
                 if nombre and apellido and cedula and email and telefono and direccion and rol:
                     componentes_profesores.agregar_profesor(nombre, apellido, fecha_nac, cedula, email, telefono, direccion, codificacion, categoria, estudios,turno,estado, fecha_job, rol)
                     st.success("Profesor agregado exitosamente.")
+                    time.sleep(2)
+                    st.rerun()
                 else:
                     st.error("Todos los campos son obligatorios.")
 
@@ -125,6 +128,8 @@ def mostrar():
                     if nombre and apellido and cedula and email and telefono and direccion and rol:
                         componentes_profesores.editar_profesor(id_profesor, nombre, apellido, fecha_nac, cedula, email, telefono, direccion, codificacion, categoria, estudios,turno,estado, fecha_job, rol)
                         st.success("Profesor actualizado exitosamente.")
+                        time.sleep(2)
+                        st.rerun()
                     else:
                         st.error("Todos los campos son obligatorios.")
 
@@ -142,6 +147,8 @@ def mostrar():
             if submit:
                 componentes_profesores.eliminar_profesor(id_profesor)
                 st.success("Profesor eliminado exitosamente.")
+                time.sleep(2)
+                st.rerun()
 
     with tabs[4]:
         st.subheader("Gestionar Roles")
@@ -157,6 +164,8 @@ def mostrar():
                         # Insertar el nuevo rol en la base de datos
                         componentes_profesores.agregar_rol(nuevo_rol)
                         st.success(f"Cargo '{nuevo_rol}' creado exitosamente.")
+                        time.sleep(2)
+                        st.rerun()
                     else:
                         st.error("El nombre del Cargo no puede estar vacío.")
 
@@ -177,6 +186,8 @@ def mostrar():
                     # Asegúrate de que el nuevo rol sea un valor simple, no un diccionario
                     componentes_profesores.editar_rol(rol_actual, nuevo_rol)
                     st.success(f"Cargo '{rol_actual}' actualizado a '{nuevo_rol}' exitosamente.")
+                    time.sleep(2)
+                    st.rerun()
                 else:
                     st.error("El nombre del Cargo no puede estar vacío.")
 
@@ -188,3 +199,5 @@ def mostrar():
             if submit:
                 componentes_profesores.eliminar_rol(rol_a_eliminar)
                 st.success(f"Cargo '{rol_a_eliminar}' eliminado exitosamente.")
+                time.sleep(2)
+                st.rerun()

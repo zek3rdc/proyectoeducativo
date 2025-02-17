@@ -47,7 +47,7 @@ def crear_grafico_torta(df_estudiantes):
         )
         
         # Guardar la imagen en la ruta especificada
-        output_dir = r"C:\Users\jozek\Documents\tareas\ProyectoSCM\S.comunitario\UENB\dependencias\grafico_torta"
+        output_dir = r"dependencias\grafico_torta"
         output_path = os.path.join(output_dir, "grafico_torta.png")
         
         # Crear el directorio si no existe

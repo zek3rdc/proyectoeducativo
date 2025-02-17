@@ -69,6 +69,10 @@ def main():
         st.session_state['acceso_calificaciones'] = id_acceso_admin  # Asegurarse de que esté disponible para otros módulos
         id_cordinates = config_manager.get(f"credentials.usernames.{username}.coordinate")
         st.session_state['coordinate'] = id_cordinates.lower() == "true" if isinstance(id_cordinates, str) else bool(id_cordinates)
+        plantilla_path = config_manager.get("plantilla_path")
+        st.session_state['plantilla_path']= plantilla_path
+        output_path = config_manager.get("output_path")
+        st.session_state['output_path']= output_path
 
 
         # Log de inicio de sesión
