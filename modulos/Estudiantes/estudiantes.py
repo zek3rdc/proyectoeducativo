@@ -128,7 +128,7 @@ def dashboard():
         st.success("Archivo Excel generado exitosamente.")
         excel_generado = True  # Cambiar el estado a True
 
-    if st.button("Descargar Excel"):
+    if st.button("Descargar PZ"):
         if os.path.exists(output_path):
             with open(output_path, "rb") as file:
                 st.download_button("Descargar Excel", file, file_name="resultado.xlsx")
@@ -176,8 +176,8 @@ def mostrar():
         with st.form("form_agregar_estudiante"):
             nombre_agregar = st.text_input("Nombre")
             apellido_agregar = st.text_input("Apellido")
-            cedula_agregar = st.text_input("Cédula")
-            cedula_est = st.text_input("Cédula Estudiantil")
+            cedula_agregar = st.text_input("Cédula (opcional)")
+            cedula_est = st.text_input("Cédula Estudiantil (opcional)")
             genero_input_agregar = st.selectbox("Género", ["varon", "hembra"])
             estado_agregar = st.selectbox("Estado", ["Activo", "Inactivo"])
             condicion_agregar = st.text_input("Condición especial (opcional)")
@@ -228,6 +228,7 @@ def mostrar():
                     errores.append("❌ El teléfono no puede estar vacío.")
                 elif not telefono.isdigit():
                     errores.append("❌ El teléfono debe ser numérico.")
+                
 
                 if not fecha_nac:
                     errores.append("❌ La fecha de nacimiento no puede estar vacía.")

@@ -21,7 +21,7 @@ credentials:
       id_acceso: admin_id
       logged_in: false
       name: Administrador
-      password: $2b$12$ukaiuGUoWBaHTgT5rvnmR.Zi4zvEtxyEvsoeHdCY1fdzzKpexk3du
+      password: $2b$12$Y9R16.YT0pqFJ5GYO4H4yu.9A5aA3A242uQzaAYFPgtD/IzB/E6MG
       role: admin
       username: admin
 imgIconPath: /logo.png

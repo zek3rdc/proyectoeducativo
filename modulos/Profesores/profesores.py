@@ -52,7 +52,7 @@ def mostrar():
             codificacion = st.selectbox("Codificación", ["Lic.", "PG", "PGE", "TSU", "Br.Dc", "NG"])
             categoria = st.selectbox("Categoría", ["I", "II", "III", "IV", "V", "VI"])
             estudios = st.selectbox("Estudia Actual", ["Si", "No"])
-            turno = st.multiselect("Turno", ["Mañana", "Tarde","Sab'Dom"])
+            turno = st.multiselect("Turno", ["Mañana", "Tarde", "Sab'Dom"])
             estado = st.selectbox("Estado", ["Activo", "Inactivo"])
             fecha_job = st.date_input(
                 "Desde Cuando Labora?",
@@ -60,21 +60,35 @@ def mostrar():
                 max_value=datetime.date.today()
             )
 
-            # Obtener los roles disponibles de la base de datos, incluyendo 'Sin Rol'
+            # Obtener los roles disponibles de la base de datos, incluyendo 'Sin Cargo'
             roles = componentes_profesores.listar_roles()
-            roles.append("Sin Cargo")  # Añadir opción para 'Sin Rol'
+            roles.append("Sin Cargo")  # Añadir opción para 'Sin Cargo'
             rol = st.selectbox("Cargo", roles)
 
             submit = st.form_submit_button("Agregar")
             if submit:
-                if nombre and apellido and cedula and email and telefono and direccion and rol:
-                    componentes_profesores.agregar_profesor(nombre, apellido, fecha_nac, cedula, email, telefono, direccion, codificacion, categoria, estudios,turno,estado, fecha_job, rol)
-                    st.success("Profesor agregado exitosamente.")
-                    time.sleep(2)
-                    st.rerun()
-                else:
-                    st.error("Todos los campos son obligatorios.")
-
+                try:
+                    # Validaciones
+                    if not nombre or not apellido or not cedula or not email or not telefono or not direccion or not rol:
+                        st.error("Todos los campos son obligatorios.")
+                    else:
+                        # Validar que la cédula sea numérica
+                        if not cedula.isdigit():
+                            st.error("La cédula debe ser numérica.")
+                        # Validar que el email contenga al menos un '@'
+                        elif "@" not in email:
+                            st.error("El email debe contener al menos un '@'.")
+                        # Validar que el teléfono sea numérico
+                        elif not telefono.isdigit():
+                            st.error("El teléfono debe ser numérico.")
+                        else:
+                            # Si todas las validaciones pasan, agregar el profesor
+                            componentes_profesores.agregar_profesor(nombre, apellido, fecha_nac, cedula, email, telefono, direccion, codificacion, categoria, estudios, turno, estado, fecha_job, rol)
+                            st.success("Profesor agregado exitosamente.")
+                            time.sleep(2)
+                            st.rerun()
+                except ValueError as e:
+                    st.warning(str(e))  # Mostrar advertencia si no hay un cargo designado      
 
     with tabs[2]:
         st.subheader("Editar Personal")
@@ -109,7 +123,7 @@ def mostrar():
                 codificacion = st.selectbox("Codificación", ["Lic.", "PG", "PGE", "TSU", "Br.Dc", "NG"])
                 categoria = st.selectbox("Categoría", ["I", "II", "III", "IV", "V", "VI"])
                 estudios = st.selectbox("Estudia Actual", ["Si", "No"])
-                turno = st.multiselect("Turno", ["Mañana", "Tarde","Sab'Dom"])
+                turno = st.multiselect("Turno", ["Mañana", "Tarde", "Sab'Dom"])
                 estado = st.selectbox("Estado", ["Activo", "Inactivo"])
                 fecha_job = st.date_input(
                     "Desde Cuando Labora?",
@@ -118,20 +132,32 @@ def mostrar():
                     max_value=datetime.date.today()
                 )
 
-                # Obtener los roles disponibles de la base de datos, incluyendo 'Sin Rol'
+                # Obtener los roles disponibles de la base de datos, incluyendo 'Sin Cargo'
                 roles = componentes_profesores.listar_roles()
-                roles.append("Sin Cargo")  # Añadir opción para 'Sin Rol'
+                roles.append("Sin Cargo")  # Añadir opción para 'Sin Cargo'
                 rol = st.selectbox("Cargo", roles, index=roles.index(profesor["rol"]))
 
                 submit = st.form_submit_button("Guardar Cambios")
                 if submit:
-                    if nombre and apellido and cedula and email and telefono and direccion and rol:
-                        componentes_profesores.editar_profesor(id_profesor, nombre, apellido, fecha_nac, cedula, email, telefono, direccion, codificacion, categoria, estudios,turno,estado, fecha_job, rol)
-                        st.success("Profesor actualizado exitosamente.")
-                        time.sleep(2)
-                        st.rerun()
-                    else:
+                    # Validaciones
+                    if not nombre or not apellido or not cedula or not email or not telefono or not direccion or not rol:
                         st.error("Todos los campos son obligatorios.")
+                    else:
+                        # Validar que la cédula sea numérica
+                        if not cedula.isdigit():
+                            st.error("La cédula debe ser numérica.")
+                        # Validar que el email contenga al menos un '@'
+                        elif "@" not in email:
+                            st.error("El email debe contener al menos un '@'.")
+                        # Validar que el teléfono sea numérico
+                        elif not telefono.isdigit():
+                            st.error("El teléfono debe ser numérico.")
+                        else:
+                            # Si todas las validaciones pasan, editar el profesor
+                            componentes_profesores.editar_profesor(id_profesor, nombre, apellido, fecha_nac, cedula, email, telefono, direccion, codificacion, categoria, estudios, turno, estado, fecha_job, rol)
+                            st.success("Profesor actualizado exitosamente.")
+                            time.sleep(2)
+                            st.rerun()
 
     with tabs[3]:
         st.subheader("Eliminar Personal")

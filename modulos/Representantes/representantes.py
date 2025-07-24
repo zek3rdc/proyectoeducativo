@@ -3,6 +3,7 @@ from modulos.Utilidades.FuncionesGenerales import subHeader
 from modulos.main_Componentes import componentes_representantes
 import pandas as pd
 import time
+import datetime
 def mostrar():
     st.header("Módulo de Representantes")
     st.write("Gestiona la información de los representantes.")
@@ -46,23 +47,32 @@ def mostrar():
             apellido = st.text_input("Apellido")
             cedula = st.text_input("Cédula")
             direccion = st.text_area("Dirección")
-            fecha_nac = st.date_input("Fecha de Nacimiento")
+            fecha_nac = st.date_input("Fecha de Nacimiento", min_value=datetime.date(1900, 1, 1),
+                max_value=datetime.date.today())
             telefono_principal = st.text_input("Teléfono Principal")
             telefonos_adicionales = st.text_area("Teléfonos Adicionales (separados por comas)")
             submit = st.form_submit_button("Agregar")
             
             if submit:
-                # Llamar a la función para agregar el representante y sus teléfonos
-                resultado = componentes_representantes.agregar_representante(
-                    nombre, apellido, cedula, telefono_principal, direccion, fecha_nac, telefonos_adicionales
-                )
-                
-                if "ID_REP" in resultado:
-                    st.success(f"Representante agregado exitosamente con ID: {resultado['ID_REP']}")
-                    time.sleep(2) 
-                    st.rerun()
+                # Validaciones
+                if not nombre or not apellido or not cedula or not direccion or not telefono_principal:
+                    st.error("Todos los campos son obligatorios.")
+                elif not cedula.isdigit():
+                    st.error("La cédula debe ser numérica.")
+                elif not telefono_principal.isdigit():
+                    st.error("El teléfono principal debe ser numérico.")
                 else:
-                    st.error(f"Error: {resultado.get('error', 'Ocurrió un error inesperado.')}")
+                    # Llamar a la función para agregar el representante y sus teléfonos
+                    resultado = componentes_representantes.agregar_representante(
+                        nombre, apellido, cedula, telefono_principal, direccion, fecha_nac, telefonos_adicionales
+                    )
+                    
+                    if "ID_REP" in resultado:
+                        st.success(f"Representante agregado exitosamente con ID: {resultado['ID_REP']}")
+                        time.sleep(2) 
+                        st.rerun()
+                    else:
+                        st.error(f"Error: {resultado.get('error', 'Ocurrió un error inesperado.')}")
 
 
     # --- Tab 3: Editar Representante ---
@@ -79,20 +89,28 @@ def mostrar():
                 telefonos = st.text_area("Nuevos Teléfonos (separados por comas)")
                 submit_editar = st.form_submit_button("Actualizar")
                 if submit_editar:
-                    if componentes_representantes.actualizar_representante(
-                        id_editar, nombre, apellido, cedula, telefono_principal_edit, direccion  # Asegúrate de pasar todos los parámetros
-                    ):
-                        # Actualizar teléfonos
-                        componentes_representantes.eliminar_telefonos_representante(id_editar)  # Eliminar teléfonos anteriores
-                        for tel in telefonos.split(","):
-                            tel = tel.strip()
-                            if tel:
-                                componentes_representantes.agregar_telefono(id_editar, tel)
-                        time.sleep(2) 
-                        st.rerun()
-                        st.success("Representante actualizado exitosamente.")
+                    # Validaciones
+                    if not nombre or not apellido or not cedula or not direccion or not telefono_principal_edit:
+                        st.error("Todos los campos son obligatorios.")
+                    elif not cedula.isdigit():
+                        st.error("La cédula debe ser numérica.")
+                    elif not telefono_principal_edit.isdigit():
+                        st.error("El teléfono principal debe ser numérico.")
                     else:
-                        st.error("Error al actualizar representante.")
+                        if componentes_representantes.actualizar_representante(
+                            id_editar, nombre, apellido, cedula, telefono_principal_edit, direccion  # Asegúrate de pasar todos los parámetros
+                        ):
+                            # Actualizar teléfonos
+                            componentes_representantes.eliminar_telefonos_representante(id_editar)  # Eliminar teléfonos anteriores
+                            for tel in telefonos.split(","):
+                                tel = tel.strip()
+                                if tel:
+                                    componentes_representantes.agregar_telefono(id_editar, tel)
+                            time.sleep(2) 
+                            st.rerun()
+                            st.success("Representante actualizado exitosamente.")
+                        else:
+                            st.error("Error al actualizar representante.")
 
 
     # --- Tab 4: Eliminar Representante ---

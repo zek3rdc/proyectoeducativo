@@ -1,132 +1,98 @@
 from modulos import db_conector
-from psycopg2.extras import RealDictCursor
 import streamlit as st
 
+# Importar modelos necesarios
+from models import Secciones, Grados, Profesores, Calificaciones, Estudiantes, Materias
 
 # Función para obtener las secciones y calificaciones asignadas al profesor
 def obtener_datos_calificaciones(id_acceso):
-    query_secciones = """
-SELECT 
-    S."ID_SECCION", S."NOMBRE_SECCION", G."NOMBRE_GRADO" 
-FROM 
-    public."SECCIONES" S
-JOIN 
-    public."GRADOS" G ON S."ID_GRADO" = G."ID_GRADOS"
-WHERE 
-    S."ID_PROF" = (
-        SELECT "ID_PROF" 
-        FROM public."PROFESORES" 
-        WHERE "ID_ACCESO" = %s
-    );
-
-    """
-    query_calificaciones = """
-SELECT 
-    C."ID_CALIFICACION", 
-    E."NOMBRE_EST", 
-    E."APELLIDO_EST", 
-    M."NOMBRE_MATERIA", 
-    C."CALIFICACION", 
-    C."FECHA_CALIFICACION",
-    S."NOMBRE_SECCION"  -- Asegúrate de incluir el nombre de la sección
-FROM 
-    public."CALIFICACIONES" C
-JOIN 
-    public."ESTUDIANTES" E ON C."ID_EST" = E."ID_EST"
-JOIN 
-    public."MATERIAS" M ON C."ID_MATERIA" = M."ID_MATERIA"
-JOIN
-    public."SECCIONES" S ON C."ID_SECCION" = S."ID_SECCION"  -- Asegúrate de unir la tabla SECCIONES
-WHERE 
-    C."ID_SECCION" IN (
-        SELECT S."ID_SECCION" 
-        FROM public."SECCIONES" S
-        WHERE S."ID_PROF" = (
-            SELECT "ID_PROF" 
-            FROM public."PROFESORES" 
-            WHERE "ID_ACCESO" = %s
-        )
-    )
-
-
-    """
-    connection = db_conector.conectar()
-    if not connection:
-        return None, None
-    try:
-        with connection.cursor(cursor_factory=RealDictCursor) as cursor:
-            # Obtener secciones
-            cursor.execute(query_secciones, (id_acceso,))
-            secciones = cursor.fetchall()
+    with db_conector.get_db() as db:
+        try:
+            # Obtener el ID_PROF del profesor usando ID_ACCESO
+            profesor = db.query(Profesores).filter(Profesores.ID_ACCESO == id_acceso).first()
+            if not profesor:
+                st.error("Profesor no encontrado.")
+                return None, None
             
-            # Obtener calificaciones
-            cursor.execute(query_calificaciones, (id_acceso,))
-            calificaciones = cursor.fetchall()
-    except Exception as e:
-        st.error(f"Error al obtener datos: {e}")
-        return None, None
-    finally:
-        connection.close()
-    return secciones, calificaciones
+            profesor_id = profesor.ID_PROF
 
+            # Obtener secciones asignadas al profesor
+            secciones_data = db.query(
+                Secciones.ID_SECCION,
+                Secciones.NOMBRE_SECCION,
+                Grados.NOMBRE_GRADO
+            ).join(Grados, Secciones.ID_GRADO == Grados.ID_GRADOS)\
+            .filter(Secciones.ID_PROF == profesor_id).all()
+            
+            secciones = [s._asdict() for s in secciones_data]
 
-# Función para actualizar calificaciones en la base de datos (modulo componente_calificaciones)
+            # Obtener calificaciones para las secciones del profesor
+            # Primero, obtener los IDs de las secciones para el filtro IN
+            seccion_ids = [s.ID_SECCION for s in secciones_data]
+
+            calificaciones_data = db.query(
+                Calificaciones.ID_CALIFICACION,
+                Estudiantes.NOMBRE_EST,
+                Estudiantes.APELLIDO_EST,
+                Materias.NOMBRE_MATERIA,
+                Calificaciones.CALIFICACION,
+                Calificaciones.FECHA_CALIFICACION,
+                Secciones.NOMBRE_SECCION
+            ).join(Estudiantes, Calificaciones.ID_EST == Estudiantes.ID_EST)\
+            .join(Materias, Calificaciones.ID_MATERIA == Materias.ID_MATERIA)\
+            .join(Secciones, Calificaciones.ID_SECCION == Secciones.ID_SECCION)\
+            .filter(Calificaciones.ID_SECCION.in_(seccion_ids)).all()
+            
+            calificaciones = [c._asdict() for c in calificaciones_data]
+
+            return secciones, calificaciones
+        except Exception as e:
+            st.error(f"Error al obtener datos: {e}")
+            return None, None
+
+# Función para actualizar calificaciones en la base de datos
 def actualizar_calificacion(id_calificacion, nueva_calificacion):
-    query = """
-        UPDATE public."CALIFICACIONES"
-        SET "CALIFICACION" = %s
-        WHERE "ID_CALIFICACION" = %s;
-    """
-    # Ejecutar el query con el ID de calificación y la nueva calificación
-    db_conector.ejecutar_query(query, (nueva_calificacion, id_calificacion))
-
-
-
-
-
+    with db_conector.get_db() as db:
+        try:
+            calificacion_obj = db.query(Calificaciones).filter(Calificaciones.ID_CALIFICACION == id_calificacion).first()
+            if calificacion_obj:
+                calificacion_obj.CALIFICACION = nueva_calificacion
+                db.commit()
+                return True
+            return False
+        except Exception as e:
+            db.rollback()
+            print(f"Error al actualizar calificación: {e}")
+            return False
 
 def obtener_todos_datos_calificaciones():
-    query_secciones = """
-    SELECT 
-        S."ID_SECCION", S."NOMBRE_SECCION", G."NOMBRE_GRADO" 
-    FROM 
-        public."SECCIONES" S
-    JOIN 
-        public."GRADOS" G ON S."ID_GRADO" = G."ID_GRADOS";
-    """
-    query_calificaciones = """
-    SELECT 
-        C."ID_CALIFICACION", 
-        E."NOMBRE_EST", 
-        E."APELLIDO_EST", 
-        M."NOMBRE_MATERIA", 
-        C."CALIFICACION", 
-        C."FECHA_CALIFICACION",
-        S."NOMBRE_SECCION"
-    FROM 
-        public."CALIFICACIONES" C
-    JOIN 
-        public."ESTUDIANTES" E ON C."ID_EST" = E."ID_EST"
-    JOIN 
-        public."MATERIAS" M ON C."ID_MATERIA" = M."ID_MATERIA"
-    JOIN
-        public."SECCIONES" S ON C."ID_SECCION" = S."ID_SECCION";
-    """
-    connection = db_conector.conectar()
-    if not connection:
-        return None, None
-    try:
-        with connection.cursor(cursor_factory=RealDictCursor) as cursor:
+    with db_conector.get_db() as db:
+        try:
             # Obtener todas las secciones
-            cursor.execute(query_secciones)
-            secciones = cursor.fetchall()
+            secciones_data = db.query(
+                Secciones.ID_SECCION,
+                Secciones.NOMBRE_SECCION,
+                Grados.NOMBRE_GRADO
+            ).join(Grados, Secciones.ID_GRADO == Grados.ID_GRADOS).all()
             
+            secciones = [s._asdict() for s in secciones_data]
+
             # Obtener todas las calificaciones
-            cursor.execute(query_calificaciones)
-            calificaciones = cursor.fetchall()
-    except Exception as e:
-        st.error(f"Error al obtener datos: {e}")
-        return None, None
-    finally:
-        connection.close()
-    return secciones, calificaciones
+            calificaciones_data = db.query(
+                Calificaciones.ID_CALIFICACION,
+                Estudiantes.NOMBRE_EST,
+                Estudiantes.APELLIDO_EST,
+                Materias.NOMBRE_MATERIA,
+                Calificaciones.CALIFICACION,
+                Calificaciones.FECHA_CALIFICACION,
+                Secciones.NOMBRE_SECCION
+            ).join(Estudiantes, Calificaciones.ID_EST == Estudiantes.ID_EST)\
+            .join(Materias, Calificaciones.ID_MATERIA == Materias.ID_MATERIA)\
+            .join(Secciones, Calificaciones.ID_SECCION == Secciones.ID_SECCION).all()
+            
+            calificaciones = [c._asdict() for c in calificaciones_data]
+
+            return secciones, calificaciones
+        except Exception as e:
+            st.error(f"Error al obtener todos los datos de calificaciones: {e}")
+            return None, None

@@ -71,7 +71,7 @@ def agregar_seccion():
     roles = componentes_secciones.obtener_roles()
     roles_nombres = [rol[1] for rol in roles if len(rol[1]) > 2]
 
-    rol_seleccionado = st.selectbox("Seleccionar Rol", roles_nombres, index=0)
+    rol_seleccionado = st.selectbox("Seleccionar Cargo", roles_nombres, index=0)
     personal = componentes_secciones.obtener_personal_por_rol(rol_seleccionado) if rol_seleccionado else []
     personal_nombres = [f"{pers[1]} {pers[2]} - {pers[3]}" for pers in personal] if personal else ["No hay personal disponible"]
     profesor_seleccionado = st.selectbox("Seleccionar Personal", personal_nombres)
@@ -115,7 +115,7 @@ def editar_seccion():
 
     roles = componentes_secciones.obtener_roles()
     roles_nombres = [rol[1] for rol in roles if len(rol[1]) > 2]
-    rol_seleccionado = st.selectbox("Seleccionar Rol", roles_nombres, index=0,key='rol')
+    rol_seleccionado = st.selectbox("Seleccionar Cargo", roles_nombres, index=0,key='rol')
 
     personal = componentes_secciones.obtener_personal_por_rol(rol_seleccionado) if rol_seleccionado else []
     personal_nombres = [f"{pers[1]} {pers[2]} - {pers[3]}" for pers in personal] if personal else ["No hay personal disponible"]

@@ -1,857 +1,531 @@
-import psycopg2
-from psycopg2 import OperationalError
-from psycopg2.extras import RealDictCursor
+from sqlalchemy.orm import Session
+from database import SessionLocal
+from models import (
+    AsignacionEst, AsistenciaEstudiantes, AsistenciaProfesores, Calificaciones,
+    Estudiantes, Grados, Incidencias, Materias, Profesores, Representantes,
+    RepreEst, Roles, Secciones, SeccionesMaterias, TelefonosRepre
+)
 import pandas as pd
+from contextlib import contextmanager
+from sqlalchemy import func
 
-def conectar():
+# Context manager para obtener una sesión de base de datos
+@contextmanager
+def get_db():
+    db = SessionLocal()
     try:
-        connection = psycopg2.connect(
-            host="localhost",
-            database="BASE_EUNB",  # Cambia esto al nombre de tu base de datos
-            user="zek3rdc",  # Cambia a tu usuario de PostgreSQL
-            password="prueba12P$A"  # Cambia a la contraseña de tu PostgreSQL
-        )
-        if connection:
-            return connection
-    except OperationalError as e:
-        print(f"OperationalError al conectar a PostgreSQL: {e}")
-        return None
+        yield db
+    finally:
+        db.close()
 
-
-# Función para cerrar la conexión
-
-def cerrar_conexion(connection):
-    if connection is not None:
+# Función para ejecutar una modificación (INSERT, UPDATE, DELETE)
+def ejecutar_modificacion(model_instance=None, query=None, params=None):
+    with get_db() as db:
         try:
-            # Intentamos hacer una consulta simple para verificar si la conexión está activa
-            connection.cursor().execute('SELECT 1')
-            connection.close()  # Cierra la conexión a PostgreSQL
-            print("Conexión cerrada exitosamente.")
+            if model_instance:
+                db.add(model_instance)
+                db.commit()
+                db.refresh(model_instance)
+                return model_instance
+            elif query:
+                # Para consultas SQL directas que modifican datos
+                result = db.execute(query, params)
+                db.commit()
+                return result.rowcount
+            return None
         except Exception as e:
-            print(f"Error al cerrar la conexión: {e}")
+            db.rollback()
+            print(f"Error al ejecutar la modificación: {e}")
+            return None
 
-
-# Función para ejecutar una consulta INSERT, UPDATE o DELETE
-def ejecutar_modificacion(query, parametros=None):
-    connection = conectar()  # Llamar a la función que conecta a MySQL
-    if connection is not None:
+# Función para ejecutar una consulta SELECT
+def ejecutar_consulta(query=None, params=None, fetch_all=True, model=None):
+    with get_db() as db:
         try:
-            cursor = connection.cursor()
-            if parametros:
-                cursor.execute(query, parametros)
-            else:
-                cursor.execute(query)
-            connection.commit()
-            return cursor.rowcount  # Retorna el número de filas afectadas
-        except OperationalError as e:
-            print(f"OperationalError al ejecutar la modificación: {e}")
-            return 0  # En caso de OperationalError, devuelve 0
-        finally:
-            cerrar_conexion(connection)
-    else:
-        return 0
+            if model:
+                if fetch_all:
+                    return db.query(model).filter_by(**params).all() if params else db.query(model).all()
+                else:
+                    return db.query(model).filter_by(**params).first() if params else db.query(model).first()
+            elif query:
+                # Para consultas SQL directas que recuperan datos
+                result = db.execute(query, params)
+                if fetch_all:
+                    return result.fetchall()
+                else:
+                    return result.fetchone()
+            return None
+        except Exception as e:
+            print(f"Error al ejecutar la consulta: {e}")
+            return None
 
 # Consultar ESTUDIANTES
 def obtener_ESTUDIANTES_1():
-    connection = conectar()  # Conectar a la base de datos
-    if connection:
+    with get_db() as db:
         try:
-            # Usar RealDictCursor para obtener resultados como diccionario
-            cursor = connection.cursor(cursor_factory=RealDictCursor)
-            
-            cursor.execute("""
-SELECT 
-    e."ID_EST",
-    e."NOMBRE_EST",
-    e."APELLIDO_EST",
-    e."CEDULA" AS "CI_EST",  -- Columna corregida según la definición de la base de datos
-    e."CEDULA_EST",
-    e."EMAIL_EST",
-    e."TELEFONO_EST",                                               
-    e."ESTADO",
-    e."DESCRIPCION_ESTADO" AS "DESCRIPCION",  -- Usar la columna correcta
-    e."GENERO",
-    e."CONDICION",
-    p."ID_REP",
-    p."NOMBRE_REP" AS "NOMBRE_REPRE",
-    p."APELLIDO_REP" AS "APELLIDO_REPRE",
-    p."CEDULA_REP",
-    e."FECHA_REG",
-    s."NOMBRE_SECCION" AS "SECCION_ASIGNADA"  -- Agregar la sección asignada
-FROM 
-    "ESTUDIANTES" e
-JOIN 
-    "REPRE_EST" pe ON e."ID_EST" = pe."ID_EST"
-JOIN 
-    "REPRESENTANTES" p ON p."ID_REP" = pe."ID_REPRE"
-LEFT JOIN 
-    "ASIGNACION_EST" ae ON e."ID_EST" = ae."ID_EST"  -- Relación con la tabla de asignaciones
-LEFT JOIN 
-    "SECCIONES" s ON ae."ID_SECCION" = s."ID_SECCION"  -- Obtener el nombre de la sección
-WHERE
-    pe."ESTADO" = 'ACTIVO'  -- Filtrar solo los estudiantes cuyo estado en REPRE_EST es 'ACTIVO'
-            """)
-            
-            # Obtener todos los resultados de la consulta
-            estudiantes = cursor.fetchall()
-            return estudiantes  # Devuelve la lista de diccionarios
-        except psycopg2.OperationalError as e:  # Manejo de errores específico para psycopg2
-            print(f"OperationalError al consultar ESTUDIANTES: {e}")
-            return None
-        except psycopg2.Error as e:  # Manejo de otros errores de psycopg2
+            # Usando el ORM para construir la consulta
+            estudiantes_data = db.query(
+                Estudiantes.ID_EST,
+                Estudiantes.NOMBRE_EST,
+                Estudiantes.APELLIDO_EST,
+                Estudiantes.CEDULA.label("CI_EST"),
+                Estudiantes.CEDULA_EST,
+                Estudiantes.EMAIL_EST,
+                Estudiantes.TELEFONO_EST,
+                Estudiantes.ESTADO,
+                Estudiantes.DESCRIPCION_ESTADO.label("DESCRIPCION"),
+                Estudiantes.GENERO,
+                Estudiantes.CONDICION,
+                Representantes.ID_REP,
+                Representantes.NOMBRE_REP.label("NOMBRE_REPRE"),
+                Representantes.APELLIDO_REP.label("APELLIDO_REPRE"),
+                Representantes.CEDULA_REP,
+                Estudiantes.FECHA_REG,
+                Secciones.NOMBRE_SECCION.label("SECCION_ASIGNADA")
+            ).join(RepreEst, Estudiantes.ID_EST == RepreEst.ID_EST)\
+            .join(Representantes, Representantes.ID_REP == RepreEst.ID_REPRE)\
+            .outerjoin(AsignacionEst, Estudiantes.ID_EST == AsignacionEst.ID_EST)\
+            .outerjoin(Secciones, AsignacionEst.ID_SECCION == Secciones.ID_SECCION)\
+            .filter(RepreEst.ESTADO == 'ACTIVO').all()
+
+            # Convertir los resultados a una lista de diccionarios para mantener la compatibilidad
+            return [row._asdict() for row in estudiantes_data]
+        except Exception as e:
             print(f"Error al consultar ESTUDIANTES: {e}")
             return None
-        finally:
-            cerrar_conexion(connection)  # Asegúrate de cerrar la conexión
-
-
-
 
 def obtener_padres():
-    connection = conectar()
-    if connection:
+    with get_db() as db:
         try:
-            cursor = connection.cursor(cursor_factory=RealDictCursor)
-            cursor.execute("""SELECT * FROM public."REPRESENTANTES" ORDER BY "ID_REP" ASC """)
-            ESTUDIANTES = cursor.fetchall()
-            return ESTUDIANTES
-        except OperationalError as e:
-            print(f"OperationalError al consultar Representantes: {e}")
+            representantes = db.query(Representantes).order_by(Representantes.ID_REP.asc()).all()
+            return [r.__dict__ for r in representantes] # Convertir a diccionario si es necesario
+        except Exception as e:
+            print(f"Error al consultar Representantes: {e}")
             return None
-        finally:
-            cerrar_conexion(connection)
 
 def obtener_ultimo_ID_EST():
-    connection = conectar()  # Asegúrate de que esta función esté definida para conectar a la base de datos
-    if connection:
+    with get_db() as db:
         try:
-            cursor = connection.cursor(cursor_factory=RealDictCursor)
-            # Ejecutar la consulta para obtener el último ID de estudiante
-            cursor.execute("""SELECT MAX("ID_EST") AS ULTIMO_ID FROM "ESTUDIANTES";""")
-            resultado = cursor.fetchone()  # Obtener el resultado de la consulta
-            
-            # Devolver el último ID, o None si no existe
-            return resultado['ULTIMO_ID'] if resultado['ULTIMO_ID'] is not None else None
-        except OperationalError as e:
-            print(f"OperationalError al obtener el último ID de estudiante: {e}")
-            return None
+            ultimo_id = db.query(func.max(Estudiantes.ID_EST)).scalar()
+            return ultimo_id
         except Exception as e:
-            # Captura de otros errores para proporcionar más detalles
-            print(f"Error inesperado: {e}")
+            print(f"Error al obtener el último ID de estudiante: {e}")
             return None
-        finally:
-            cerrar_conexion(connection)  # Cierra la conexión al final
 
-def registro_existe(tabla, campo, valor):
-    """
-    Verifica si un registro existe en una tabla específica.
-    """
-    connection = conectar()
-    if connection:
+
+def registro_existe(model, field, value):
+    with get_db() as db:
         try:
-            cursor = connection.cursor(cursor_factory=RealDictCursor)
-            query = f"""SELECT COUNT(*) as total FROM "{tabla}" WHERE "{campo}" = %s"""
-            cursor.execute(query, (valor,))
-            result = cursor.fetchone()
-            return result['total'] > 0
+            count = db.query(model).filter(field == value).count()
+            return count > 0
         except Exception as e:
-            print(f"Error al consultar registro en {tabla}.{campo}={valor}: {e}")
+            print(f"Error al consultar registro en {model.__tablename__}.{field.name}={value}: {e}")
             return False
-        finally:
-            cerrar_conexion(connection)
-
-
 
 def matricula_existe(cedula_EST):
-    """
-    Verifica si una matrícula existe en la tabla ESTUDIANTES.
-    """
-    return registro_existe("ESTUDIANTES", "CEDULA_EST", cedula_EST)
+    return registro_existe(Estudiantes, Estudiantes.CEDULA_EST, cedula_EST)
 
 def cedula_existe(cedula):
-    """
-    Verifica si una cédula existe en la tabla ESTUDIANTES.
-    """
-    return registro_existe("ESTUDIANTES", "CEDULA", cedula)
-
-
+    return registro_existe(Estudiantes, Estudiantes.CEDULA, cedula)
 
 def cambiar_estado_estudiante(ID_EST, nuevo_estado, descripcion):
-    try:
-        connection = conectar()
-        cursor = connection.cursor()
-        
-        # Actualizar el estado y la descripción del estudiante
-        query = """
-        UPDATE ESTUDIANTES 
-        SET ESTADO = %s, DESCRIPCION = %s 
-        WHERE ID_EST = %s
-        """
-        cursor.execute(query, (nuevo_estado, descripcion, ID_EST))
-        connection.commit()
-        
-        print(f"Estado del estudiante con ID {ID_EST} actualizado.")
-    
-    except OperationalError as e:
-        print(f"OperationalError al cambiar el estado del estudiante: {e}")
-    
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
-
-
-
-def ejecutar_consulta_unica(query, parametros):
-    connection = conectar()
-    if connection:
+    with get_db() as db:
         try:
-            cursor = connection.cursor(cursor_factory=RealDictCursor)
-            cursor.execute(query, parametros)
-            result = cursor.fetchone()
-            connection.commit()
-            return result
-        finally:
-            cerrar_conexion(connection)
-
-
-
-
-def obtener_datos(query, parametros=None):
-    """
-    Ejecuta una consulta SELECT y devuelve los resultados.
-    
-    :param query: La consulta SQL a ejecutar.
-    :param parametros: Parámetros opcionales para la consulta.
-    :return: Lista de resultados.
-    """
-    conn = conectar()
-    if conn:
-        try:
-            cursor = conn.cursor()
-            cursor.execute(query, parametros)
-            resultados = cursor.fetchall()  # Obtener todos los resultados
-            cursor.close()
-            conn.close()
-            return resultados
+            estudiante = db.query(Estudiantes).filter(Estudiantes.ID_EST == ID_EST).first()
+            if estudiante:
+                estudiante.ESTADO = nuevo_estado
+                estudiante.DESCRIPCION_ESTADO = descripcion # Asumiendo que DESCRIPCION_ESTADO es la columna correcta
+                db.commit()
+                print(f"Estado del estudiante con ID {ID_EST} actualizado.")
+                return True
+            return False
         except Exception as e:
-            print(f"Error al ejecutar la consulta: {e}")
-            return []
-        finally:
-            if conn:
-                conn.close()
-    return []
+            db.rollback()
+            print(f"Error al cambiar el estado del estudiante: {e}")
+            return False
 
-
+# Las funciones ejecutar_consulta_unica y obtener_datos se pueden reemplazar por ejecutar_consulta
+# o por consultas directas al ORM.
 
 def obtener_secciones():
-    """
-    Obtiene las secciones con su grado y profesor.
-    """
-    try:
-        conn = conectar()
-        cursor = conn.cursor()
-        query = """
-        SELECT 
-            s."ID_SECCION", 
-            s."NOMBRE_SECCION" AS "NOMBRE_SECCION",  -- Renombrando aquí
-            g."NOMBRE_GRADO", 
-            p."NOMBRE_PROF" || ' ' || p."APELLIDO_PROF" AS "PROFESOR"
-        FROM 
-            public."SECCIONES" s
-        JOIN 
-            public."GRADOS" g ON s."ID_GRADO" = g."ID_GRADOS"
-        JOIN 
-            public."PROFESORES" p ON s."ID_PROF" = p."ID_PROF"
-        ORDER BY 
-            s."ID_SECCION";
+    with get_db() as db:
+        try:
+            secciones_data = db.query(
+                Secciones.ID_SECCION,
+                Secciones.NOMBRE_SECCION,
+                Grados.NOMBRE_GRADO,
+                (Profesores.NOMBRE_PROF + ' ' + Profesores.APELLIDO_PROF).label("PROFESOR")
+            ).join(Grados, Secciones.ID_GRADO == Grados.ID_GRADOS)\
+            .join(Profesores, Secciones.ID_PROF == Profesores.ID_PROF)\
+            .order_by(Secciones.ID_SECCION.asc()).all()
+            
+            return [row._asdict() for row in secciones_data]
+        except Exception as e:
+            print(f"Error al obtener secciones: {e}")
+            return []
 
-        """
-        cursor.execute(query)
-        secciones = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return secciones
-    except Exception as e:
-        print(f"Error al obtener secciones: {e}")
-        return []
-
-def obtener_materias_por_grado(grado):
-    """
-    Obtiene las materias asignadas a un grado.
-    """
-    try:
-        conn = conectar()
-        cursor = conn.cursor()
-        query = """
-        SELECT 
-            m."NOMBRE_MATERIA"
-        FROM 
-            public."GRADO_MATERIAS" gm
-        JOIN 
-            public."GRADOS" g ON gm."ID_GRADO" = g."ID_GRADOS"
-        JOIN 
-            public."MATERIAS" m ON gm."ID_MATERIA" = m."ID_MATERIA"
-        WHERE 
-            g."NOMBRE_GRADO" = %s;
-        """
-        cursor.execute(query, (grado,))
-        materias = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return [materia[0] for materia in materias]
-    except Exception as e:
-        print(f"Error al obtener materias por grado: {e}")
-        return []
+def obtener_materias_por_grado(grado_nombre):
+    with get_db() as db:
+        try:
+            # Asumiendo que existe una tabla GRADO_MATERIAS o una relación directa
+            # Si no existe, esta función necesitará una revisión más profunda.
+            # Por ahora, asumo una relación a través de SeccionesMaterias y Grados
+            materias = db.query(Materias.NOMBRE_MATERIA)\
+                       .join(SeccionesMaterias, Materias.ID_MATERIA == SeccionesMaterias.ID_MATERIA)\
+                       .join(Secciones, SeccionesMaterias.ID_SECCION == Secciones.ID_SECCION)\
+                       .join(Grados, Secciones.ID_GRADO == Grados.ID_GRADOS)\
+                       .filter(Grados.NOMBRE_GRADO == grado_nombre).distinct().all()
+            return [m[0] for m in materias]
+        except Exception as e:
+            print(f"Error al obtener materias por grado: {e}")
+            return []
 
 def obtener_asistencia_estudiantes(id_seccion):
-    """
-    Obtiene la asistencia de los estudiantes para una sección.
-    """
-    try:
-        conn = conectar()
-        cursor = conn.cursor()
-        query = """
-        SELECT 
-            e."NOMBRE_EST" || ' ' || e."APELLIDO_EST" AS "ESTUDIANTE",
-            a."FECHA_ASISTENCIA",
-            a."ESTADO_ASISTENCIA"
-        FROM 
-            public."ASISTENCIA_ESTUDIANTES" a
-        JOIN 
-            public."ESTUDIANTES" e ON a."ID_EST" = e."ID_EST"
-        WHERE 
-            a."ID_SECCION" = %s;
-        """
-        cursor.execute(query, (id_seccion,))
-        asistencia = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return asistencia
-    except Exception as e:
-        print(f"Error al obtener asistencia de estudiantes: {e}")
-        return []
+    with get_db() as db:
+        try:
+            asistencia_data = db.query(
+                (Estudiantes.NOMBRE_EST + ' ' + Estudiantes.APELLIDO_EST).label("ESTUDIANTE"),
+                AsistenciaEstudiantes.FECHA_ASISTENCIA,
+                AsistenciaEstudiantes.ESTADO_ASISTENCIA
+            ).join(Estudiantes, AsistenciaEstudiantes.ID_EST == Estudiantes.ID_EST)\
+            .filter(AsistenciaEstudiantes.ID_SECCION == id_seccion).all()
+            
+            return [row._asdict() for row in asistencia_data]
+        except Exception as e:
+            print(f"Error al obtener asistencia de estudiantes: {e}")
+            return []
 
 def obtener_asistencia_profesores(id_seccion):
-    """
-    Obtiene la asistencia del profesor para una sección.
-    """
-    try:
-        conn = conectar()
-        cursor = conn.cursor()
-        query = """
-        SELECT 
-            p."NOMBRE_PROF" || ' ' || p."APELLIDO_PROF" AS "PROFESOR",
-            a."FECHA_ASISTENCIA",
-            a."ESTADO_ASISTENCIA"
-        FROM 
-            public."ASISTENCIA_PROFESORES" a
-        JOIN 
-            public."PROFESORES" p ON a."ID_PROF" = p."ID_PROF"
-        WHERE 
-            a."ID_SECCION" = %s;
-        """
-        cursor.execute(query, (id_seccion,))
-        asistencia = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return asistencia
-    except Exception as e:
-        print(f"Error al obtener asistencia de profesores: {e}")
-        return []
+    with get_db() as db:
+        try:
+            # La tabla ASISTENCIA_PROFESORES no tiene ID_SECCION.
+            # Si la intención es obtener la asistencia del profesor asignado a esa sección,
+            # se necesita una unión a la tabla SECCIONES.
+            # Asumo que se quiere la asistencia de los profesores que imparten clases en esa sección.
+            asistencia_data = db.query(
+                (Profesores.NOMBRE_PROF + ' ' + Profesores.APELLIDO_PROF).label("PROFESOR"),
+                AsistenciaProfesores.FECHA_ASISTENCIA,
+                AsistenciaProfesores.ESTADO_ASISTENCIA
+            ).join(Profesores, AsistenciaProfesores.ID_PROF == Profesores.ID_PROF)\
+            .join(Secciones, Profesores.ID_PROF == Secciones.ID_PROF)\
+            .filter(Secciones.ID_SECCION == id_seccion).all()
+            
+            return [row._asdict() for row in asistencia_data]
+        except Exception as e:
+            print(f"Error al obtener asistencia de profesores: {e}")
+            return []
 
 def obtener_calificaciones_estudiantes(id_seccion):
-    """
-    Obtiene las calificaciones de los estudiantes para una sección.
-    """
-    try:
-        conn = conectar()
-        cursor = conn.cursor()
-        query = """
-        SELECT 
-            e."NOMBRE_EST" || ' ' || e."APELLIDO_EST" AS "ESTUDIANTE",
-            m."NOMBRE_MATERIA",
-            c."CALIFICACION"
-        FROM 
-            public."CALIFICACIONES" c
-        JOIN 
-            public."ESTUDIANTES" e ON c."ID_EST" = e."ID_EST"
-        JOIN 
-            public."MATERIAS" m ON c."ID_MATERIA" = m."ID_MATERIA"
-        WHERE 
-            c."ID_SECCION" = %s;
-        """
-        cursor.execute(query, (id_seccion,))
-        calificaciones = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return calificaciones
-    except Exception as e:
-        print(f"Error al obtener calificaciones de estudiantes: {e}")
-        return []
-
-
-
-
-def ejecutar_query(query, parametros=None, fetch_all=True):
-    """
-    Ejecuta una consulta SQL en la base de datos PostgreSQL.
-
-    Parámetros:
-    - query (str): La consulta SQL a ejecutar.
-    - parametros (tuple): Los parámetros para la consulta (opcional).
-    - fetch_all (bool): Si es True, recupera todos los resultados (SELECT). 
-                        Si es False, recupera solo un resultado.
-
-    Retorna:
-    - Lista de resultados (para SELECT con fetch_all=True).
-    - Un único resultado (para SELECT con fetch_all=False).
-    - True (para consultas que no devuelven datos, como INSERT, UPDATE o DELETE).
-    - None si ocurre un error.
-    """
-    connection = conectar()
-    if connection:
+    with get_db() as db:
         try:
-            cursor = connection.cursor(cursor_factory=RealDictCursor)
-            cursor.execute(query, parametros)
-
-            if cursor.description:  # Verifica si hay datos para recuperar (SELECT)
-                if fetch_all:
-                    return cursor.fetchall()  # Recupera todos los resultados
-                else:
-                    return cursor.fetchone()  # Recupera un único resultado
-            else:
-                connection.commit()  # Confirmar cambios para INSERT, UPDATE o DELETE
-                return True
-
-        except psycopg2.Error as e:
-            print(f"Error al ejecutar la consulta: {e}")
-            return None
-
-        finally:
-            cerrar_conexion(connection)
-    else:
-        print("No se pudo establecer conexión con la base de datos.")
-        return None
-
-
-
+            calificaciones_data = db.query(
+                (Estudiantes.NOMBRE_EST + ' ' + Estudiantes.APELLIDO_EST).label("ESTUDIANTE"),
+                Materias.NOMBRE_MATERIA,
+                Calificaciones.CALIFICACION
+            ).join(Estudiantes, Calificaciones.ID_EST == Estudiantes.ID_EST)\
+            .join(Materias, Calificaciones.ID_MATERIA == Materias.ID_MATERIA)\
+            .filter(Calificaciones.ID_SECCION == id_seccion).all()
+            
+            return [row._asdict() for row in calificaciones_data]
+        except Exception as e:
+            print(f"Error al obtener calificaciones de estudiantes: {e}")
+            return []
 
 def listar_secciones():
-    """
-    Obtiene la lista de secciones desde la base de datos.
-    """
-    query = '''
-        SELECT 
-            "ID_SECCION" AS id_seccion, 
-            "NOMBRE_SECCION" AS nombre_seccion, 
-            "ID_GRADO" AS grado, 
-            "ID_PROF" AS profesor
-        FROM public."SECCIONES";
-    '''
-    return ejecutar_query(query)
+    with get_db() as db:
+        try:
+            secciones = db.query(
+                Secciones.ID_SECCION.label("id_seccion"),
+                Secciones.NOMBRE_SECCION.label("nombre_seccion"),
+                Secciones.ID_GRADO.label("grado"),
+                Secciones.ID_PROF.label("profesor")
+            ).all()
+            return [s._asdict() for s in secciones]
+        except Exception as e:
+            print(f"Error al listar secciones: {e}")
+            return []
 
 def listar_detalles_seccion(id_seccion):
-    """
-    Obtiene todos los detalles de las secciones y las materias asociadas a una sección.
-    """
     if not isinstance(id_seccion, int):
         raise ValueError(f"El ID de la sección debe ser un número entero. Se recibió: {id_seccion}")
 
-    query = '''
-        SELECT 
-            s."ID_SECCION" AS id_seccion,
-            s."NOMBRE_SECCION" AS nombre_seccion,
-            s."ID_GRADO" AS id_grado,
-            g."NOMBRE_GRADO" AS nombre_grado,  -- Nombre del grado
-            p."NOMBRE_PROF" AS nombre_profesor,     -- Nombre del profesor (ajustado)
-            p."CEDULA_PROF" AS cedula_profesor,     -- Cédula del profesor (ajustado)
-            m."ID_MATERIA" AS id_materia,
-            m."NOMBRE_MATERIA" AS nombre_materia,
-            m."DESCRIPCION_MATERIA" AS descripcion_materia
-        FROM public."SECCIONES_MATERIAS" sm
-        INNER JOIN public."SECCIONES" s ON sm."ID_SECCION" = s."ID_SECCION"
-        INNER JOIN public."MATERIAS" m ON sm."ID_MATERIA" = m."ID_MATERIA"
-        INNER JOIN public."GRADOS" g ON s."ID_GRADO" = g."ID_GRADOS"  -- Ajuste aquí: la columna de grados es "ID_GRADOS"
-        INNER JOIN public."PROFESORES" p ON s."ID_PROF" = p."ID_PROF"  -- Relación con la tabla de profesores
-        WHERE s."ID_SECCION" = %s;  -- Filtrar por el ID de la sección
-    '''
-    return ejecutar_query(query, (id_seccion,))
-
-
+    with get_db() as db:
+        try:
+            detalles = db.query(
+                Secciones.ID_SECCION.label("id_seccion"),
+                Secciones.NOMBRE_SECCION.label("nombre_seccion"),
+                Secciones.ID_GRADO.label("id_grado"),
+                Grados.NOMBRE_GRADO.label("nombre_grado"),
+                Profesores.NOMBRE_PROF.label("nombre_profesor"),
+                Profesores.CEDULA_PROF.label("cedula_profesor"),
+                Materias.ID_MATERIA.label("id_materia"),
+                Materias.NOMBRE_MATERIA.label("nombre_materia"),
+                Materias.DESCRIPCION_MATERIA.label("descripcion_materia")
+            ).join(SeccionesMaterias, Secciones.ID_SECCION == SeccionesMaterias.ID_SECCION)\
+            .join(Materias, SeccionesMaterias.ID_MATERIA == Materias.ID_MATERIA)\
+            .join(Grados, Secciones.ID_GRADO == Grados.ID_GRADOS)\
+            .join(Profesores, Secciones.ID_PROF == Profesores.ID_PROF)\
+            .filter(Secciones.ID_SECCION == id_seccion).all()
+            
+            return [d._asdict() for d in detalles]
+        except Exception as e:
+            print(f"Error al listar detalles de sección: {e}")
+            return []
 
 def listar_asistencia_estudiantes(id_seccion):
-    """
-    Obtiene los datos de asistencia de los estudiantes de una sección específica.
-    """
-    query = '''
-        SELECT 
-            ae."ID_EST" AS id_estudiante, 
-            e."NOMBRE_EST" AS nombre, 
-            ae."FECHA_ASISTENCIA" AS fecha, 
-            ae."ESTADO_ASISTENCIA" AS estado
-        FROM public."ASISTENCIA_ESTUDIANTES" ae
-        INNER JOIN public."ESTUDIANTES" e ON ae."ID_EST" = e."ID_EST"
-        WHERE ae."ID_SECCION" = %s;
-    '''
-    return ejecutar_consulta_unica(query, (id_seccion,))
+    with get_db() as db:
+        try:
+            asistencia = db.query(
+                AsistenciaEstudiantes.ID_EST.label("id_estudiante"),
+                Estudiantes.NOMBRE_EST.label("nombre"),
+                AsistenciaEstudiantes.FECHA_ASISTENCIA.label("fecha"),
+                AsistenciaEstudiantes.ESTADO_ASISTENCIA.label("estado")
+            ).join(Estudiantes, AsistenciaEstudiantes.ID_EST == Estudiantes.ID_EST)\
+            .filter(AsistenciaEstudiantes.ID_SECCION == id_seccion).all()
+            
+            return [a._asdict() for a in asistencia]
+        except Exception as e:
+            print(f"Error al listar asistencia de estudiantes: {e}")
+            return []
 
 def listar_asistencia_profesores(id_seccion):
-    """
-    Obtiene los datos de asistencia del profesor de una sección específica.
-    """
-    query = '''
-        SELECT 
-            ap."ID_PROF" AS id_profesor, 
-            p."NOMBRE_PROF" AS nombre, 
-            ap."FECHA_ASISTENCIA" AS fecha, 
-            ap."ESTADO_ASISTENCIA" AS estado
-        FROM public."ASISTENCIA_PROFESORES" ap
-        INNER JOIN public."PROFESORES" p ON ap."ID_PROF" = p."ID_PROF"
-        WHERE ap."ID_SECCION" = %s;
-    '''
-    return ejecutar_consulta_unica(query, (id_seccion,))
+    with get_db() as db:
+        try:
+            # Similar a obtener_asistencia_profesores, asumo que se refiere al profesor de la sección
+            asistencia = db.query(
+                Profesores.ID_PROF.label("id_profesor"),
+                Profesores.NOMBRE_PROF.label("nombre"),
+                AsistenciaProfesores.FECHA_ASISTENCIA.label("fecha"),
+                AsistenciaProfesores.ESTADO_ASISTENCIA.label("estado")
+            ).join(Profesores, AsistenciaProfesores.ID_PROF == Profesores.ID_PROF)\
+            .join(Secciones, Profesores.ID_PROF == Secciones.ID_PROF)\
+            .filter(Secciones.ID_SECCION == id_seccion).all()
+            
+            return [a._asdict() for a in asistencia]
+        except Exception as e:
+            print(f"Error al listar asistencia de profesores: {e}")
+            return []
 
 def listar_calificaciones(id_seccion):
-    """
-    Obtiene las calificaciones de los estudiantes en una sección específica.
-    """
-    query = '''
-        SELECT 
-            c."ID_EST" AS id_estudiante, 
-            e."NOMBRE_EST" AS nombre, 
-            m."NOMBRE_MATERIA" AS materia, 
-            c."CALIFICACION" AS calificacion, 
-            c."FECHA_CALIFICACION" AS fecha
-        FROM public."CALIFICACIONES" c
-        INNER JOIN public."ESTUDIANTES" e ON c."ID_EST" = e."ID_EST"
-        INNER JOIN public."MATERIAS" m ON c."ID_MATERIA" = m."ID_MATERIA"
-        WHERE c."ID_SECCION" = %s;
-    '''
-    return ejecutar_consulta_unica(query, (id_seccion,))
+    with get_db() as db:
+        try:
+            calificaciones = db.query(
+                Calificaciones.ID_EST.label("id_estudiante"),
+                Estudiantes.NOMBRE_EST.label("nombre"),
+                Materias.NOMBRE_MATERIA.label("materia"),
+                Calificaciones.CALIFICACION.label("calificacion"),
+                Calificaciones.FECHA_CALIFICACION.label("fecha")
+            ).join(Estudiantes, Calificaciones.ID_EST == Estudiantes.ID_EST)\
+            .join(Materias, Calificaciones.ID_MATERIA == Materias.ID_MATERIA)\
+            .filter(Calificaciones.ID_SECCION == id_seccion).all()
+            
+            return [c._asdict() for c in calificaciones]
+        except Exception as e:
+            print(f"Error al listar calificaciones: {e}")
+            return []
 
 def listar_profesores():
-    """
-    Obtiene la lista de profesores desde la base de datos, incluyendo aquellos sin rol asignado.
-    """
-    query = '''
-SELECT 
-    p."ID_PROF" AS id_profesor,
-    p."NOMBRE_PROF" AS nombre,
-    p."APELLIDO_PROF" AS apellido,
-    p."CEDULA_PROF" AS cedula,
-    p."TELEFONO_PROF" AS telefono,
-    p."DIRECCION_PROF" AS direccion,
-    p."FECHA_NAC_PERSONAL" AS fecha_nacimiento,
-    p."CODIFICACION" AS codificacion,
-    p."CATEGORIA" AS categoria,
-    p."ESTUDIOS_ACTUAL" AS estudios_actual,
-    p."FECHA_LABORAL" AS fecha_laboral,
-    p."EMAIL_PROF" AS email,
-    P."TURNO" AS Turno,
-    p."ESTADO" AS estado,
-    COALESCE(r."ROL", 'Sin Rol') AS rol  -- Si no tiene rol, mostramos 'Sin Rol'
-FROM 
-    public."PROFESORES" p
-LEFT JOIN 
-    public."ROLES" r 
-ON 
-    p."ID_ROL" = r."ID_ROL";
-
-    '''
-    return ejecutar_query(query)
+    with get_db() as db:
+        try:
+            profesores_data = db.query(
+                Profesores.ID_PROF.label("id_profesor"),
+                Profesores.NOMBRE_PROF.label("nombre"),
+                Profesores.APELLIDO_PROF.label("apellido"),
+                Profesores.CEDULA_PROF.label("cedula"),
+                Profesores.TELEFONO_PROF.label("telefono"),
+                Profesores.DIRECCION_PROF.label("direccion"),
+                Profesores.FECHA_NAC_PERSONAL.label("fecha_nacimiento"),
+                Profesores.CODIFICACION.label("codificacion"),
+                Profesores.CATEGORIA.label("categoria"),
+                Profesores.ESTUDIOS_ACTUAL.label("estudios_actual"),
+                Profesores.FECHA_LABORAL.label("fecha_laboral"),
+                Profesores.EMAIL_PROF.label("email"),
+                Profesores.TURNO.label("Turno"),
+                Profesores.ESTADO.label("estado"),
+                func.coalesce(Roles.ROL, 'Sin Rol').label("rol")
+            ).outerjoin(Roles, Profesores.ID_ROL == Roles.ID_ROL).all()
+            
+            return [p._asdict() for p in profesores_data]
+        except Exception as e:
+            print(f"Error al listar profesores: {e}")
+            return []
 
 def obtener_secciones_rendimiento():
-    """
-    Obtiene las secciones desde la base de datos.
-    """
-    query = '''
-        SELECT DISTINCT "ID_SECCION", "NOMBRE_SECCION"
-        FROM public."SECCIONES";
-    '''
-    resultados = ejecutar_query(query)
-    return [f"{row['ID_SECCION']} - {row['NOMBRE_SECCION']}" for row in resultados]
+    with get_db() as db:
+        try:
+            secciones = db.query(Secciones.ID_SECCION, Secciones.NOMBRE_SECCION).distinct().all()
+            return [f"{row.ID_SECCION} - {row.NOMBRE_SECCION}" for row in secciones]
+        except Exception as e:
+            print(f"Error al obtener secciones para rendimiento: {e}")
+            return []
 
 def obtener_materias():
-    """
-    Obtiene las materias desde la base de datos.
-    """
-    query = '''
-        SELECT DISTINCT "ID_MATERIA", "NOMBRE_MATERIA"
-        FROM public."MATERIAS";
-    '''
-    resultados = ejecutar_query(query)
-    return [f"{row['ID_MATERIA']} - {row['NOMBRE_MATERIA']}" for row in resultados]
+    with get_db() as db:
+        try:
+            materias = db.query(Materias.ID_MATERIA, Materias.NOMBRE_MATERIA).distinct().all()
+            return [f"{row.ID_MATERIA} - {row.NOMBRE_MATERIA}" for row in materias]
+        except Exception as e:
+            print(f"Error al obtener materias: {e}")
+            return []
 
 def obtener_anios_escolares():
-    """
-    Obtiene los años escolares desde la base de datos.
-    """
-    query = '''
-        SELECT DISTINCT "YEAR_ESCOLAR"
-        FROM public."CALIFICACIONES"
-        ORDER BY "YEAR_ESCOLAR" DESC;
-    '''
-    resultados = ejecutar_query(query)
-    return [row['YEAR_ESCOLAR'] for row in resultados]
+    with get_db() as db:
+        try:
+            anios = db.query(Calificaciones.YEAR_ESCOLAR).distinct().order_by(Calificaciones.YEAR_ESCOLAR.desc()).all()
+            return [a[0] for a in anios]
+        except Exception as e:
+            print(f"Error al obtener años escolares: {e}")
+            return []
 
 def obtener_calificaciones(seccion, materia, year_escolar):
-    """
-    Obtiene las calificaciones filtradas por sección, materia y año escolar.
-    """
-    condiciones = []
-    parametros = []
+    with get_db() as db:
+        try:
+            query = db.query(
+                Estudiantes.ID_EST,
+                Estudiantes.NOMBRE_EST,
+                Estudiantes.APELLIDO_EST,
+                Calificaciones.CALIFICACION,
+                Materias.NOMBRE_MATERIA,
+                Secciones.NOMBRE_SECCION,
+                Calificaciones.YEAR_ESCOLAR,
+                Calificaciones.FECHA_CALIFICACION
+            ).join(Estudiantes, Calificaciones.ID_EST == Estudiantes.ID_EST)\
+            .join(Materias, Calificaciones.ID_MATERIA == Materias.ID_MATERIA)\
+            .join(Secciones, Calificaciones.ID_SECCION == Secciones.ID_SECCION)
 
-    # Agregar condiciones dinámicas basadas en los filtros
-    if seccion != "Ver Todo":
-        id_seccion = seccion.split(" - ")[0]
-        condiciones.append('cal."ID_SECCION" = %s')
-        parametros.append(id_seccion)
+            if seccion != "Ver Todo":
+                id_seccion = int(seccion.split(" - ")[0])
+                query = query.filter(Calificaciones.ID_SECCION == id_seccion)
+            if materia != "Ver Todo":
+                id_materia = int(materia.split(" - ")[0])
+                query = query.filter(Calificaciones.ID_MATERIA == id_materia)
+            if year_escolar != "Ver Todo":
+                query = query.filter(Calificaciones.YEAR_ESCOLAR == year_escolar)
 
-    if materia != "Ver Todo":
-        id_materia = materia.split(" - ")[0]
-        condiciones.append('cal."ID_MATERIA" = %s')
-        parametros.append(id_materia)
-
-    if year_escolar != "Ver Todo":
-        condiciones.append('cal."YEAR_ESCOLAR" = %s')
-        parametros.append(year_escolar)
-
-    # Construir el WHERE dinámico
-    where_clause = f"WHERE {' AND '.join(condiciones)}" if condiciones else ""
-
-    query = f'''
-        SELECT 
-            est."ID_EST",
-            est."NOMBRE_EST",
-            est."APELLIDO_EST",
-            cal."CALIFICACION",
-            mat."NOMBRE_MATERIA",
-            sec."NOMBRE_SECCION",
-            cal."YEAR_ESCOLAR",
-            cal."FECHA_CALIFICACION"
-        FROM public."CALIFICACIONES" cal
-        JOIN public."ESTUDIANTES" est ON cal."ID_EST" = est."ID_EST"
-        JOIN public."MATERIAS" mat ON cal."ID_MATERIA" = mat."ID_MATERIA"
-        JOIN public."SECCIONES" sec ON cal."ID_SECCION" = sec."ID_SECCION"
-        {where_clause}
-        ORDER BY cal."FECHA_CALIFICACION" DESC;
-    '''
-    resultados = ejecutar_query(query, parametros)
-    return pd.DataFrame(resultados)
+            resultados = query.order_by(Calificaciones.FECHA_CALIFICACION.desc()).all()
+            return pd.DataFrame([r._asdict() for r in resultados])
+        except Exception as e:
+            print(f"Error al obtener calificaciones: {e}")
+            return pd.DataFrame()
 
 def asignar_estudiante_a_seccion(id_estudiante, id_seccion):
-    """
-    Asigna un estudiante a una sección específica y le asigna las materias de esa sección.
-    Args:
-        id_estudiante (int): ID del estudiante.
-        id_seccion (int): ID de la sección a asignar.
-    Returns:
-        bool: True si la asignación fue exitosa, False si hubo un error.
-    """
-    try:
-        # Asegurarse de que los IDs sean de tipo int
-        id_estudiante = int(id_estudiante)
-        id_seccion = int(id_seccion)
+    from datetime import date
+    with get_db() as db:
+        try:
+            id_estudiante = int(id_estudiante)
+            id_seccion = int(id_seccion)
 
-        # Conectar a la base de datos
-        conn = conectar()  # Usamos la función que ya tienes para conectar a la base de datos
-        cursor = conn.cursor()
+            # Verificar si el estudiante ya está asignado a la sección
+            existing_assignment = db.query(AsignacionEst).filter(
+                AsignacionEst.ID_EST == id_estudiante,
+                AsignacionEst.ID_SECCION == id_seccion
+            ).first()
 
-        # Verificar si el estudiante ya está asignado a la sección
-        query_check = """
-        SELECT COUNT(*) 
-        FROM "ASIGNACION_EST"
-        WHERE "ID_EST" = %s AND "ID_SECCION" = %s;
-        """
-        cursor.execute(query_check, (id_estudiante, id_seccion))
-        result = cursor.fetchone()
-        if result[0] > 0:
-            # El estudiante ya está asignado a esta sección
-            print(f"El estudiante {id_estudiante} ya está asignado a la sección {id_seccion}.")
-            cursor.close()
-            conn.close()
+            if existing_assignment:
+                print(f"El estudiante {id_estudiante} ya está asignado a la sección {id_seccion}.")
+                return False
+
+            # Insertar la asignación del estudiante a la sección
+            new_assignment = AsignacionEst(
+                ID_EST=id_estudiante,
+                ID_SECCION=id_seccion,
+                YEAR_ESCOLAR=date.today(),
+                FECHA_ASIGNACION=date.today()
+            )
+            db.add(new_assignment)
+            db.flush() # Para que el objeto tenga ID_ASIGNACION si es necesario
+
+            # Obtener las materias asociadas a la sección
+            materias_seccion = db.query(SeccionesMaterias.ID_MATERIA).filter(
+                SeccionesMaterias.ID_SECCION == id_seccion
+            ).all()
+
+            if not materias_seccion:
+                print("La sección no tiene materias asignadas.")
+                db.rollback()
+                return False
+
+            # Asignar las materias al estudiante con una calificación de 0
+            for materia_id_tuple in materias_seccion:
+                materia_id = materia_id_tuple[0] # Extraer el ID de la tupla
+                new_calificacion = Calificaciones(
+                    ID_EST=id_estudiante,
+                    ID_MATERIA=materia_id,
+                    ID_SECCION=id_seccion,
+                    CALIFICACION=0,
+                    YEAR_ESCOLAR=date.today(),
+                    FECHA_CALIFICACION=date.today()
+                )
+                db.add(new_calificacion)
+            
+            db.commit()
+            return True
+        except Exception as e:
+            db.rollback()
+            print(f"Error al asignar el estudiante a la sección: {e}")
             return False
-
-        # Insertar la asignación del estudiante a la sección
-        query_insert = """
-        INSERT INTO "ASIGNACION_EST" ("ID_EST", "ID_SECCION", "YEAR_ESCOLAR", "FECHA_ASIGNACION")
-        VALUES (%s, %s, NOW(), NOW());
-        """
-        cursor.execute(query_insert, (id_estudiante, id_seccion))
-        conn.commit()  # Confirmar la asignación del estudiante a la sección
-
-        # Obtener las materias asociadas a la sección
-        query_materias = """
-        SELECT "ID_MATERIA" 
-        FROM "SECCIONES_MATERIAS"
-        WHERE "ID_SECCION" = %s;
-        """
-        cursor.execute(query_materias, (id_seccion,))
-        materias = cursor.fetchall()
-
-        if not materias:
-            print("La sección no tiene materias asignadas.")
-            cursor.close()
-            conn.close()
-            return False
-
-        # Asignar las materias al estudiante con una calificación de 0
-        query_insert_calificacion = """
-        INSERT INTO "CALIFICACIONES" ("ID_EST", "ID_MATERIA", "ID_SECCION", "CALIFICACION", "YEAR_ESCOLAR", "FECHA_CALIFICACION")
-        VALUES (%s, %s, %s, 0, NOW(), NOW());
-        """
-        for materia in materias:
-            cursor.execute(query_insert_calificacion, (id_estudiante, materia[0], id_seccion))
-        
-        conn.commit()  # Confirmar las calificaciones
-
-        # Cerrar la conexión
-        cursor.close()
-        conn.close()
-
-        return True  # La asignación fue exitosa
-    except Exception as e:
-        print(f"Error al asignar el estudiante a la sección: {e}")
-        if conn:
-            conn.rollback()  # Revertir cambios en caso de error
-        return False  # Retornamos False en caso de error
 
 def obtener_estudiantes_por_seccion(id_seccion):
-    """
-    Obtiene los estudiantes asignados a una sección específica.
-
-    Args:
-        id_seccion (int): ID de la sección para la cual se desea obtener los estudiantes.
-
-    Returns:
-        list: Lista de tuplas con los datos de los estudiantes 
-              (ID_EST, NOMBRE_EST, APELLIDO_EST, CEDULA).
-              Retorna una lista vacía si no hay estudiantes o si ocurre un error.
-    """
-    try:
-        # Convertir id_seccion a un entero estándar
-        id_seccion = int(id_seccion)
-
-        # Conectar a la base de datos
-        conn = conectar()
-        cursor = conn.cursor()
-
-        # Query para obtener estudiantes por sección
-        query = """
-        SELECT 
-            e."ID_EST",
-            e."NOMBRE_EST",
-            e."APELLIDO_EST",
-            e."CEDULA",
-            e."CEDULA_EST"
-        FROM 
-            public."ESTUDIANTES" e
-        JOIN 
-            public."ASIGNACION_EST" ae ON e."ID_EST" = ae."ID_EST"
-        WHERE 
-            ae."ID_SECCION" = %s
-        ORDER BY 
-            e."NOMBRE_EST";
-        """
-        # Ejecutar el query
-        cursor.execute(query, (id_seccion,))
-        estudiantes = cursor.fetchall()
-
-        # Cerrar cursor y conexión
-        cursor.close()
-        conn.close()
-
-        # Retornar los resultados
-        return estudiantes
-
-    except Exception as e:
-        print(f"Error al obtener estudiantes por sección: {e}")
-        return []
-
+    with get_db() as db:
+        try:
+            id_seccion = int(id_seccion)
+            estudiantes = db.query(
+                Estudiantes.ID_EST,
+                Estudiantes.NOMBRE_EST,
+                Estudiantes.APELLIDO_EST,
+                Estudiantes.CEDULA,
+                Estudiantes.CEDULA_EST
+            ).join(AsignacionEst, Estudiantes.ID_EST == AsignacionEst.ID_EST)\
+            .filter(AsignacionEst.ID_SECCION == id_seccion)\
+            .order_by(Estudiantes.NOMBRE_EST.asc()).all()
+            
+            return [e._asdict() for e in estudiantes]
+        except Exception as e:
+            print(f"Error al obtener estudiantes por sección: {e}")
+            return []
 
 def insertar_id_acceso_en_base_de_datos(id_profesor, id_acceso):
-    """
-    Inserta el ID_ACCESO generado en la base de datos para el profesor.
-    """
-    try:
-        connection = conectar()  # Función para conectar a la base de datos
-        if connection:
-            with connection.cursor() as cursor:
-                # Actualizar la tabla "PROFESORES" con el nuevo ID_ACCESO
-                query = """
-                    UPDATE public."PROFESORES"
-                    SET "ID_ACCESO" = %s
-                    WHERE "ID_PROF" = %s
-                """
-                cursor.execute(query, (id_acceso, id_profesor))
-                connection.commit()
-            return "ID de acceso actualizado exitosamente en la base de datos."
-        else:
-            return "Error al conectar a la base de datos."
-    except Exception as e:
-        return f"Error al actualizar ID de acceso en la base de datos: {e}"
-
-
+    with get_db() as db:
+        try:
+            profesor = db.query(Profesores).filter(Profesores.ID_PROF == id_profesor).first()
+            if profesor:
+                profesor.ID_ACCESO = id_acceso
+                db.commit()
+                return "ID de acceso actualizado exitosamente en la base de datos."
+            return "Profesor no encontrado."
+        except Exception as e:
+            db.rollback()
+            return f"Error al actualizar ID de acceso en la base de datos: {e}"
 
 def obtener_estudiantes_con_seccion():
-    try:
-        connection = conectar()
-        if connection:
-            cursor = connection.cursor()
-            query = """
-SELECT 
-    "ESTUDIANTES"."ID_EST", 
-    "ESTUDIANTES"."NOMBRE_EST", 
-    "ESTUDIANTES"."APELLIDO_EST", 
-    "ASIGNACION_EST"."ID_SECCION", 
-    "SECCIONES"."NOMBRE_SECCION"
-FROM 
-    "ESTUDIANTES"
-INNER JOIN 
-    "ASIGNACION_EST" ON "ESTUDIANTES"."ID_EST" = "ASIGNACION_EST"."ID_EST"
-INNER JOIN 
-    "SECCIONES" ON "ASIGNACION_EST"."ID_SECCION" = "SECCIONES"."ID_SECCION";
-
-            """
-            cursor.execute(query)
-            estudiantes = cursor.fetchall()
-            connection.close()
-            return estudiantes
-        else:
+    with get_db() as db:
+        try:
+            estudiantes_seccion = db.query(
+                Estudiantes.ID_EST,
+                Estudiantes.NOMBRE_EST,
+                Estudiantes.APELLIDO_EST,
+                AsignacionEst.ID_SECCION,
+                Secciones.NOMBRE_SECCION
+            ).join(AsignacionEst, Estudiantes.ID_EST == AsignacionEst.ID_EST)\
+            .join(Secciones, AsignacionEst.ID_SECCION == Secciones.ID_SECCION).all()
+            
+            return [e._asdict() for e in estudiantes_seccion]
+        except Exception as e:
+            print(f"Error al obtener los estudiantes con sección: {e}")
             return None
-    except Exception as e:
-        print(f"Error al obtener los estudiantes con sección: {e}")
-        return None
-
 
 def eliminar_estudiante_de_seccion(id_estudiante):
-    try:
-        conn = conectar()
-        cursor = conn.cursor()
-
-        # Eliminar las calificaciones del estudiante de la tabla CALIFICACIONES
-        query_eliminar_calificaciones = """
-        DELETE FROM "CALIFICACIONES" 
-        WHERE "ID_EST" = %s;
-        """
-        cursor.execute(query_eliminar_calificaciones, (id_estudiante,))
-        conn.commit()
-
-        # Eliminar la asignación del estudiante de la sección en la tabla ASIGNACION_EST
-        query_eliminar_asignacion = """
-        DELETE FROM "ASIGNACION_EST" 
-        WHERE "ID_EST" = %s;
-        """
-        cursor.execute(query_eliminar_asignacion, (id_estudiante,))
-        conn.commit()
-
-        cursor.close()
-        conn.close()
-
-        return True
-    except Exception as e:
-        print(f"Error al eliminar al estudiante de la sección: {e}")
-        if conn:
-            conn.rollback()
-        return False
+    with get_db() as db:
+        try:
+            # Eliminar las calificaciones del estudiante
+            db.query(Calificaciones).filter(Calificaciones.ID_EST == id_estudiante).delete()
+            
+            # Eliminar la asignación del estudiante de la sección
+            db.query(AsignacionEst).filter(AsignacionEst.ID_EST == id_estudiante).delete()
+            
+            db.commit()
+            return True
+        except Exception as e:
+            db.rollback()
+            print(f"Error al eliminar al estudiante de la sección: {e}")
+            return False

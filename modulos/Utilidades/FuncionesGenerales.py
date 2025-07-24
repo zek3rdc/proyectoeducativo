@@ -12,8 +12,33 @@ def UI():
         
       
         st.sidebar.image(st.session_state['imgLogoPath'])
-        st.sidebar.write('v2024.11.01')
-        
+        rainbow_css = """
+        <style>
+        @keyframes rainbow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+
+        .rainbow-text {
+            font-size: 28px; /* Ajusta el tamaño según sea necesario */
+            font-weight: bold;
+            background: linear-gradient(90deg, #FF5733, #FFBD33, #75FF33, #33FF57, #33FFBD, #3375FF, #5733FF, #FF33A1);
+            background-size: 400%; /* Ajusta para una animación más suave */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: rainbow 6s linear infinite; /* Duración de la animación */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3); /* Sombra para un efecto más profesional */
+            letter-spacing: 1px; /* Espaciado entre letras */
+        }
+        </style>
+        """
+
+        # Agregar el CSS a la aplicación
+        st.markdown(rainbow_css, unsafe_allow_html=True)
+
+        # Usar el texto con el efecto arcoíris
+        st.sidebar.markdown('<div class="rainbow-text">v2025.02.01 ALPHA</div>', unsafe_allow_html=True)
+                
     # Remove whitespace from the top of the page and sidebar
         st.markdown("""
                 <style>
